@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('services_type', function (Blueprint $table) {
+            $table->increments('id'); // Primary key: auto-incrementing unsigned integer
+            $table->string('name')->unique(); // Name of the service type, e.g. "Barangay Clearance"
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('service_types');
+    }
+};

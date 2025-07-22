@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        container_name: client-php
+        volumes:
+            - .:/var/www
+        depends_on:
+            - mysql
+
+    nginx:
+        image: nginx:alpine
+        container_name: client-nginx
+        ports:
+            - "8080:80"
+        volumes:
+            - .:/var/www
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - app
+
+    mysql:
+        image: mysql:8.0
+        container_name: client-mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: client_db
+            MYSQL_USER: client_user
+            MYSQL_PASSWORD: client_pass
+        ports:
+            - "33060:3306"
+        volumes:
+            - mysql_data:/var/lib/mysql
+
+volumes:
+    mysql_data:
