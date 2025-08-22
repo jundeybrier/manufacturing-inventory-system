@@ -12,8 +12,8 @@ return new class extends Migration {
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('service_id');
 
-            $table->foreign('product_id')->references('id')->on('products')->onDelete('restrict')->onUpdate('restrict');
-            $table->foreign('service_id')->references('id')->on('services')->onDelete('restrict')->onUpdate('restrict');
+            $table->foreign('product_id')->references('id')->on('products')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade')->onUpdate('cascade');
         });
     }
 

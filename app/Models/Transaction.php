@@ -1,29 +1,74 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
+
 class Transaction extends Model
 {
-    protected $table = 'transactions';
-
-    public $timestamps = false; // use datetime_created manually
-
     protected $fillable = [
-        'token', 'date', 'reference_number', 'or_number',
-        'lastname', 'firstname', 'middlename', 'rep_name',
-        'amount_paid', 'remarks', 'counter',
-        'user_id', 'datetime_created', 'created_by',
-        'datetime_voided', 'voided_by',
-        'datetime_validated', 'validated_by',
+        'date', 'reference_number', 'or_number',
+        'firstname', 'lastname', 'middlename', 'rep_name',
+        'total_amount', 'remarks', 'counter',
+        'user_id', 'office_id', 'session_id',
+        'datetime_created', 'datetime_validated',
+        'validated_by', 'created_by',
     ];
-
-    public function details()
+    protected static function boot()
     {
-        return $this->hasMany(TransactionDetail::class, 't_id');
+        parent::boot();
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
     }
 
-    public function getFullnameAttribute(): string
+    public function details(): HasMany
     {
-        return trim("{$this->firstname} {$this->middlename} {$this->lastname}");
+        return $this->hasMany(TransactionDetail::class, 'transaction_id');
     }
+
+    public function getComputedTotalAttribute(): float
+    {
+        return $this->details->reduce(function ($carry, $detail) {
+            $lineTotal = $detail->quantity * $detail->amount;
+
+            if ($detail->currency !== 'PHP' && $detail->exchange_rate > 0) {
+                $lineTotal *= $detail->exchange_rate;
+            }
+
+            return $carry + $lineTotal;
+        }, 0);
+    }
+
+    public function getFullnameAttribute(){
+        if($this->middlename){
+            return strtoupper($this->lastname.', '.$this->firstname.' '.$this->middlename[0]);
+        }
+        return strtoupper($this->lastname.', '.$this->firstname);
+    }
+
+    public function getTotalAccount(string $accountName): float
+    {
+        $total = 0;
+
+        foreach ($this->details as $detail) {
+            if (!$detail->feeComponent) {
+                continue;
+            }
+            $component = $detail->feeComponent;
+            if ($component->account->name === $accountName) {
+                $share = $component->base_amount * $detail->quantity;
+                $total += $share;
+            }
+        }
+
+        return $total;
+    }
+
+
 }

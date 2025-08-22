@@ -7,7 +7,7 @@ use Livewire\Component;
 class BreakdownForm extends Component
 {
     public $sessionId;
-    public $denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
+    public $denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 1, 0.01];
     public $counts = [];
 
     public function mount($sessionId)

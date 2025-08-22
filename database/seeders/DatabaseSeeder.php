@@ -15,11 +15,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            FundSourceSeeder::class,
-            ServicesTypeSeeder::class,
-            ServicesSeeder::class,
-            ProductsSeeder::class,
-            ProductServicesSeeder::class,
+//            FundSourceSeeder::class,
+//            ServicesTypeSeeder::class,
+//            ServicesSeeder::class,
+//            ProductsSeeder::class,
+//            ProductServicesSeeder::class,
         ]);
     }
 }

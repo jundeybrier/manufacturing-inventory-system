@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique()->nullable(); // Unique cross-system ID
+            $table->uuid('cloud_id')->nullable(); // If user already exists on cloud
+            $table->foreignId('office_id')->nullable()->index();
+            $table->timestamp('synced_at')->nullable();
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();

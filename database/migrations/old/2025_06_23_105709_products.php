@@ -20,8 +20,9 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void
+    public function down()
     {
+        Schema::dropIfExists('products_services');
         Schema::dropIfExists('products');
     }
 };

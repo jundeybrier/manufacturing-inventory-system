@@ -28,6 +28,16 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->prefix('transactions')->group(function () {
     Route::get('/', All::class)->name('transactions.index');
     Route::get('/create', Create::class)->name('transactions.create');
+    Route::get('/transactions/daily-report', [\App\Http\Controllers\TransactionReportController::class, 'daily'])
+        ->name('transactions.daily-report');
+});
+
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/services', \App\Livewire\Services\Index::class)->name('services.index');
+    Route::get('/accounts', \App\Livewire\Accounts\Index::class)->name('accounts.index');
+    Route::get('/fee-components', \App\Livewire\FeeComponents\Index::class)->name('fee-components.index');
+    Route::get('/offices', \App\Livewire\Offices\Index::class)->name('offices.index');
+    Route::get('/users', \App\Livewire\Users\Index::class)->name('users.index');
 });
 
 Route::get('/registration', [RegisterUserController::class, 'show'])->name('registration');
