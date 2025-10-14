@@ -32,6 +32,9 @@ Route::middleware(['auth'])->prefix('transactions')->group(function () {
         ->name('transactions.daily-report');
 });
 
+Route::get('/print/receipt/{transaction}', [\App\Http\Controllers\ReceiptController::class, 'show'])
+    ->name('print.receipt');
+
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/services', \App\Livewire\Services\Index::class)->name('services.index');
     Route::get('/accounts', \App\Livewire\Accounts\Index::class)->name('accounts.index');

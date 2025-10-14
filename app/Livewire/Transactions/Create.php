@@ -290,7 +290,7 @@ class Create extends BaseComponent
         }
 
         if ($this->printReceipt) {
-            $this->printReceipt($transaction);
+            $this->dispatch('print-receipt', transactionId: $transaction->id);
         }
 
         $this->reset([
@@ -396,9 +396,10 @@ class Create extends BaseComponent
 
     public function revalidate($transactionId)
     {
-        $transaction = Transaction::with('details')->findOrFail($transactionId);
+        $transaction = Transaction::findOrFail($transactionId);
 
-        $this->printReceipt($transaction, true);
+        // ✅ Dispatch Livewire v3 browser event
+        $this->dispatch('print-receipt', transactionId: $transaction->id, revalidate: true);
 
         $this->toast('success', 'Revalidation successful!');
     }
@@ -439,36 +440,60 @@ class Create extends BaseComponent
     public function openSession()
     {
         $user = auth()->user();
+        \Log::info('openSession() called', ['user_id' => $user->id ?? null]);
 
         // Check for office assignment
         if (empty($user->office_id)) {
+            \Log::warning('User has no office_id', ['user_id' => $user->id]);
             $this->addError('office', 'You do not have an assigned office. Please contact your administrator.');
             return;
         }
+
+        // Check for active session
         if ($this->activeSession) {
+            \Log::info('User already has an active session', ['user_id' => $user->id]);
             $this->toast('warning', 'You have an unclosed session that needs to be closed first.');
             return;
         }
 
-
+        // Check for existing session today
         $alreadyOpenedToday = \App\Models\CashierSession::where('user_id', $user->id)
             ->whereDate('opened_at', now()->toDateString())
             ->exists();
 
+        \Log::info('Checked existing session for today', [
+            'user_id' => $user->id,
+            'alreadyOpenedToday' => $alreadyOpenedToday
+        ]);
+
         if ($alreadyOpenedToday) {
+            \Log::warning('User already opened session today', ['user_id' => $user->id]);
             $this->addError('session', 'You have already opened a register today.');
             return;
         }
 
-        $this->activeSession = \App\Models\CashierSession::create([
-            'user_id'   => $user->id,
-            'office_id' => $user->office_id,
-            'opened_at' => now(),
-            // uuid auto-set
-        ]);
+        try {
+            $this->activeSession = \App\Models\CashierSession::create([
+                'user_id'   => $user->id,
+                'office_id' => $user->office_id,
+                'opened_at' => now(),
+            ]);
 
-        $this->alreadyOpenedToday = true;
+            $this->alreadyOpenedToday = true;
+            \Log::info('Cashier session created successfully', [
+                'user_id' => $user->id,
+                'session_id' => $this->activeSession->id ?? null
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create cashier session', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $this->addError('session', 'An error occurred while opening the session.');
+        }
     }
+
 
     public function showHistory()
     {

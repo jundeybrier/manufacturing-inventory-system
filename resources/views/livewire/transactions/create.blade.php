@@ -375,4 +375,15 @@
 
         </div>
     </div>
+        <script>
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('print-receipt', (data) => {
+                    const id = data.transactionId;
+                    const isRevalidate = data.revalidate ?? false;
+                    const url = `/print/receipt/${id}` + (isRevalidate ? '?mode=revalidate' : '');
+                    const w = window.open(url, '_blank', 'width=400,height=600');
+                    if (!w) alert('Please allow popups to print receipts.');
+                });
+            });
+        </script>
 </div>
