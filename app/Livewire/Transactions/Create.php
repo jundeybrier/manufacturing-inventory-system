@@ -47,6 +47,7 @@ class Create extends BaseComponent
     public $modalService = null; // Will hold the selected Service model
     public $variableAmounts = []; // [fee_component_id => value]
     public $usdConversionRate = null;
+    public $isExchangeRateLocked = false;
     public bool $showConfirmModal = false;
 
 // This method is triggered by the button
@@ -102,33 +103,54 @@ class Create extends BaseComponent
 
     public function selectService($serviceId)
     {
-        // Find the service from the loaded collection
         $service = $this->services->where('id', $serviceId)->first();
         if (!$service) return;
 
-        // Check if any fee is variable or USD
         $hasVariable = false;
-        $hasDollar = false;
+        $hasDollar   = false;
+
         foreach ($service->feeComponents as $fee) {
             if ($fee->is_variable) $hasVariable = true;
             if ($fee->currency === 'USD') $hasDollar = true;
         }
 
-        // If variable/dollar, open modal and don't add anything yet
+        // If variable/dollar, open modal and don't add yet
         if ($hasVariable || $hasDollar) {
             $this->modalService = $service;
             $this->variableAmounts = [];
+
             foreach ($service->feeComponents as $fee) {
-                $this->variableAmounts[$fee->id] = $fee->is_variable || $fee->currency === 'USD'
-                    ? null
-                    : $fee->base_amount;
+                $this->variableAmounts[$fee->id] =
+                    ($fee->is_variable || $fee->currency === 'USD')
+                        ? null
+                        : $fee->base_amount;
             }
-            $this->usdConversionRate = null;
+
+            // 🔒 Lock or fetch exchange rate for USD
+            if ($hasDollar) {
+                // Check if user already has locked rate for today
+                $lockedRate = \App\Models\TransactionDetail::whereHas('transaction', function ($q) {
+                    $q->where('user_id', auth()->id())
+                        ->whereDate('created_at', now()->toDateString()); // use created_at
+                })
+                    ->whereNotNull('exchange_rate')
+                    ->orderBy('id', 'asc')
+                    ->value('exchange_rate');
+
+                if ($lockedRate) {
+                    $this->usdConversionRate = $lockedRate;
+                    $this->isExchangeRateLocked = true; // 👈 add a flag
+                } else {
+                    $this->usdConversionRate = null;
+                    $this->isExchangeRateLocked = false;
+                }
+            }
+
             $this->showVariableModal = true;
             return;
         }
 
-        // Only add here if there are NO variable/dollar fees
+        // No variable/dollar fees → add directly
         foreach ($service->feeComponents as $fee) {
             $existingIndex = collect($this->selectedFees)
                 ->search(fn($f) => $f['fee_id'] === $fee->id);
@@ -137,18 +159,23 @@ class Create extends BaseComponent
                 $this->selectedFees[$existingIndex]['quantity'] += 1;
             } else {
                 $this->selectedFees[] = [
-                    'fee_id'       => $fee->id,
-                    'fee_name'     => $fee->name,
-                    'service_id'   => $service->id,
-                    'service_name' => $service->name,
-                    'quantity'     => 1,
-                    'price'        => $fee->base_amount,
-                    'currency'     => $fee->currency,
+                    'fee_id'         => $fee->id,
+                    'fee_name'       => $fee->name,
+                    'service_id'     => $service->id,
+                    'service_name'   => $service->name,
+                    'quantity'       => 1,
+                    'price'          => $fee->base_amount,
+                    'currency'       => $fee->currency,
+                    'exchange_rate'  => $fee->currency === 'USD'
+                        ? $this->usdConversionRate
+                        : null,
                 ];
             }
         }
+
         $this->recalculateTotal();
     }
+
 
     public function closeVariableModal()
     {
@@ -304,6 +331,7 @@ class Create extends BaseComponent
             'remarks',
             'selectedFees',
             'totalAmount',
+            'usdConversionRate',
         ]);
         $this->recalculateTotal();
         $this->or_number = auth()->user()->nextOrNumber();

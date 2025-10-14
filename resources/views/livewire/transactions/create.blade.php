@@ -262,11 +262,21 @@
                         @endforeach
                         @if($modalService->feeComponents->where('currency', 'USD')->count())
                             <div class="mb-3">
-                                <label class="block text-sm font-medium mb-1">Conversion Rate (₱ per $)</label>
-                                <input type="number" min="0" step="0.01"
-                                       wire:model.defer="usdConversionRate"
-                                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
-                                />
+                                <label class="block text-sm font-medium">USD Exchange Rate</label>
+
+                                @if($isExchangeRateLocked)
+                                    <input type="text"
+                                           class="input input-bordered w-full bg-gray-100 dark:bg-gray-700"
+                                           value="{{ $usdConversionRate }}"
+                                           readonly />
+                                    <p class="text-xs text-gray-500 mt-1">Locked for today ({{ now()->format('M d, Y') }})</p>
+                                @else
+                                    <input type="number"
+                                           wire:model.defer="usdConversionRate"
+                                           step="0.0001"
+                                           class="input input-bordered w-full"
+                                           placeholder="Enter today's rate" />
+                                @endif
                             </div>
                         @endif
                     @endif

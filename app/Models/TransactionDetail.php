@@ -51,7 +51,11 @@ class TransactionDetail extends Model
 
         $component = $this->feeComponent;
         if ($component->account->name === $accountName) {
-            $share = $component->base_amount * $this->quantity;
+            if($this->exchange_rate > 0){
+                $share = $this->exchange_rate * $this->amount * $this->quantity;
+            }else{
+                $share = $component->base_amount * $this->quantity;
+            }
             $total += $share;
         }
 
