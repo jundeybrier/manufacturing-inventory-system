@@ -19,9 +19,9 @@
 
         body {
             /* ✅ slightly thicker, easier-to-read text */
-            font-family: 'DotMatrix', 'Courier New', monospace;
-            font-size: 12px;
-            font-weight: 500;   /* not bold, just medium weight */
+            font-family: "Lucida Console", Consolas, "Courier New", monospace;
+            font-size: 9px;
+            font-weight: 300;   /* not bold, just medium weight */
             line-height: 1.2;
             color: #000;
             margin: 0;
@@ -70,7 +70,7 @@
 
         @media print {
             body {
-                font-family: 'DotMatrix', 'Courier New', monospace !important;
+                font-family: "Lucida Console", Consolas, "Courier New", monospace;
                 font-size: 12px !important;
                 font-weight: 1500 !important;
                 color: #000;
