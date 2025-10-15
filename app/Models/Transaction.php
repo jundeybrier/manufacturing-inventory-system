@@ -10,12 +10,27 @@ use Illuminate\Support\Str;
 class Transaction extends Model
 {
     protected $fillable = [
-        'date', 'reference_number', 'or_number',
-        'firstname', 'lastname', 'middlename', 'rep_name',
-        'total_amount', 'remarks', 'counter',
-        'user_id', 'office_id', 'session_id',
-        'datetime_created', 'datetime_validated',
-        'validated_by', 'created_by',
+        'date',
+        'reference_number',
+        'or_number',
+        'firstname',
+        'lastname',
+        'middlename',
+        'rep_name',
+        'total_amount',
+        'remarks',
+        'counter',
+        'user_id',
+        'office_id',
+        'session_id',
+        'datetime_created',
+        'datetime_validated',
+        'validated_by',
+        'created_by',
+        'is_voided',
+        'void_reason',
+        'voided_by',
+        'voided_at',
     ];
     protected static function boot()
     {
@@ -72,6 +87,11 @@ class Transaction extends Model
         }
 
         return $total;
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by');
     }
 
 

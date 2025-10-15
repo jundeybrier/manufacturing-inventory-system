@@ -49,6 +49,11 @@ class Create extends BaseComponent
     public $usdConversionRate = null;
     public $isExchangeRateLocked = false;
     public bool $showConfirmModal = false;
+    public $isRevalidated = false;
+
+    public $showVoidModal = false;
+    public $selectedTransaction = null;
+    public $void_reason = '';
 
 // This method is triggered by the button
     public function confirmSubmit()
@@ -424,6 +429,7 @@ class Create extends BaseComponent
 
     public function revalidate($transactionId)
     {
+        $this->isRevalidated = true;
         $transaction = Transaction::findOrFail($transactionId);
 
         // ✅ Dispatch Livewire v3 browser event
@@ -592,6 +598,33 @@ class Create extends BaseComponent
         return Transaction::where('user_id', auth()->id())
             ->whereBetween('created_at', [$this->activeSession->opened_at, now()])
             ->sum('amount_paid');
+    }
+
+    public function confirmVoid($id)
+    {
+        $this->selectedTransaction = \App\Models\Transaction::find($id);
+        $this->void_reason = '';
+        $this->showVoidModal = true;
+    }
+
+    public function voidTransaction()
+    {
+        $this->validate([
+            'void_reason' => 'required|string|min:5',
+        ]);
+
+        if ($this->selectedTransaction) {
+            $this->selectedTransaction->update([
+                'is_voided' => true,
+                'void_reason' => $this->void_reason,
+                'voided_by' => auth()->id(),
+                'voided_at' => now(),
+            ]);
+        }
+
+        $this->showVoidModal = false;
+        $this->dispatch('notify', message: 'Transaction voided successfully.');
+        $this->todayHistory = \App\Models\Transaction::whereDate('created_at', today())->get(); // if you have a refresh function
     }
 
     public function render()

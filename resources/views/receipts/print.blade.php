@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <title>Receipt #{{ $transaction->or_number }}</title>
     <style>
-        @font-face {
-            font-family: 'DotMatrix';
-            src: url('{{ asset('fonts/DotMatrix.woff2') }}') format('woff2'),
-            url('{{ asset('fonts/DotMatrix.ttf') }}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }
+        {{--@font-face {--}}
+        {{--    font-family: 'DotMatrix';--}}
+        {{--    src: url('{{ asset('fonts/DotMatrix.woff2') }}') format('woff2'),--}}
+        {{--    url('{{ asset('fonts/DotMatrix.ttf') }}') format('truetype');--}}
+        {{--    font-weight: normal;--}}
+        {{--    font-style: normal;--}}
+        {{--}--}}
 
         @page {
             size: 90mm 188mm;
@@ -19,9 +19,8 @@
 
         body {
             /* ✅ slightly thicker, easier-to-read text */
-            font-family: "Lucida Console", Consolas, "Courier New", monospace;
+            font-family: Consolas, "Lucida Console", "Courier New", monospace;
             font-size: 9px;
-            font-weight: 300;   /* not bold, just medium weight */
             line-height: 1.2;
             color: #000;
             margin: 0;
@@ -65,14 +64,13 @@
             padding-right: 22px;
         }
 
-        td.desc { width: 75%; }
-        td.amount { width: 25%; text-align: right; }
+        td.desc { width: 72%; }
+        td.amount { width: 28%; text-align: right; }
 
         @media print {
             body {
-                font-family: "Lucida Console", Consolas, "Courier New", monospace;
+                font-family: "Roboto Mono",monospace, "Lucida Console", Consolas, "Courier New", monospace;
                 font-size: 12px !important;
-                font-weight: 1500 !important;
                 color: #000;
             }
         }
@@ -88,21 +86,22 @@
     {{ now()->format('F d, Y H:i') }}<br>
 </div>
 
-<div style="margin-top:28px;">
-    Name: {{ $transaction->customer_name ?? '-' }}<br>
-    OR #: {{ $transaction->or_number }}
+<div style="margin-top:30px;">
+    Name: {{ $transaction->fullname ?? '-' }}<br>
+    OR #: {{ $transaction->or_number }}<br>
+    {{ ($transaction->reference??'').($transaction->remarks?('/'.$transaction->remarks):'') }}
     @if($isRevalidate ?? false)
         <div><strong>(REVALIDATED)</strong></div>
     @endif
 </div>
 <?php
-    $totalLines = 9;
+    $totalLines = 10;
 ?>
-<table style="margin-top:65px;">
+<table style="margin-top:53px;">
     <tbody>
     @foreach($transaction->details as $d)
         <tr>
-            <td class="desc">{{ Str::limit($d->description ?? $d->name, 35) }}</td>
+            <td class="desc">{{ Str::limit($d->feeComponent->name, 32) }}</td>
             <td class="amount right pad-right-10">₱{{ number_format($d->amount, 2) }}</td>
         </tr>
         <?php $totalLines--; ?>
@@ -116,17 +115,19 @@
     </tbody>
     <tfoot>
     <tr>
-        <td colspan="2"><hr></td>
-    </tr>
-    <tr>
         <td class="right"></td>
-        <td class="amount pad-right-10"><strong>₱{{ number_format($transaction->total_amount, 2) }}</strong></td>
+        <td class="amount pad-right-10">₱{{ number_format($transaction->total_amount, 2) }}</td>
     </tr>
     </tfoot>
 </table>
+<table style="margin-top: 150px;">
+    <tr>
+        <td width="50%">&nbsp;</td>
+        <td width="50%" style="text-align: center;">{{ auth()->user()->name ?? '' }}</td>
+    </tr>
+</table>
 
-<br>
-Cashier: {{ auth()->user()->name ?? '' }}
+
 
 <script>
     window.onload = () => {

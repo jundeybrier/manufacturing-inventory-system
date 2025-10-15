@@ -392,6 +392,165 @@
     </tr>
     </tbody>
 </table>
+@php
+    $voidedTransactions = \App\Models\Transaction::with(['details', 'voidedBy'])
+        ->whereDate('voided_at', $date)
+        ->where('is_voided', true)
+        ->orderBy('voided_at', 'asc')
+        ->get();
+@endphp
+@if($voidedTransactions->count())
+{{-- PAGE: VOIDED TRANSACTIONS SUMMARY --}}
+<div style="page-break-after: always;"></div>
+
+<table width="100%">
+    <tr>
+        <td class="center">
+            <b>Department of Foreign Affairs</b><br>
+            {{ strtoupper($user->office->site ?? '') }}<br>
+            <b>Voided Transactions Summary</b><br>
+            {{ \Carbon\Carbon::parse($date)->format('d F Y') }}
+        </td>
+    </tr>
+</table>
+
+<br>
+
+
+
+
+    <table border="1" width="100%">
+        <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 10%;">OR No.</th>
+            <th style="width: 20%;">Client Name</th>
+            <th style="width: 30%;">Services Availed</th>
+            <th style="width: 20%;">Reason / Explanation</th>
+            <th style="width: 15%;">Voided By / Date</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach($voidedTransactions as $index => $txn)
+            <tr>
+                <td class="center">{{ $index + 1 }}</td>
+                <td class="center">{{ $txn->or_number }}</td>
+                <td>{{ trim(($txn->firstname ?? '').' '.($txn->middlename ?? '').' '.($txn->lastname ?? '')) ?: '-' }}</td>
+                <td>
+                    @foreach($txn->details as $detail)
+                        <li>{{ $detail->feeComponent->name }} – Php {{ number_format($detail->amount, 2) }}</li>
+                    @endforeach
+                </td>
+                <td>{{ $txn->void_reason }}</td>
+                <td class="center">
+                    {{ strtoupper(optional($txn->voidedBy)->fullname ?? 'N/A') }}<br>
+                    {{ \Carbon\Carbon::parse($txn->voided_at)->format('d M Y h:i A') }}
+                </td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+
+@endif
+
+@if($voidedTransactions->count())
+    @foreach($voidedTransactions as $txn)
+        <div style="page-break-before: always;">
+
+            <table width="100%">
+                <tr>
+                    <td class="center">
+                        <b>Republic of the Philippines</b><br>
+                        <b>Department of Foreign Affairs</b><br>
+                        <b>Office of Consular Affairs</b><br>
+                        <b>{{ strtoupper($user->office->site ?? '') }}</b><br><br>
+                        <b style="font-size:1.2em;">CERTIFICATION OF VOIDED TRANSACTION</b>
+                    </td>
+                </tr>
+            </table>
+
+            <br>
+
+            <p style="text-align:justify; line-height:1.6;">
+                This is to certify that the following transaction has been voided from today’s collection record.
+            </p>
+
+            <table border="1" width="100%" style="border-collapse: collapse; font-size: 10px; margin-top: 10px;">
+                <tr>
+                    <th style="width: 25%;">Official Receipt (OR) No.</th>
+                    <td style="width: 25%;">{{ $txn->or_number }}</td>
+                    <th style="width: 25%;">Date of Transaction</th>
+                    <td style="width: 25%;">
+                        {{ \Carbon\Carbon::parse($txn->date ?? $txn->created_at)->format('F d, Y') }}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Client Name</th>
+                    <td colspan="3">
+                        {{ trim(($txn->firstname ?? '').' '.($txn->middlename ?? '').' '.($txn->lastname ?? '')) ?: 'N/A' }}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Services Availed</th>
+                    <td colspan="3">
+                        <ul style="margin:0; padding-left:15px;">
+                            @foreach($txn->details as $detail)
+                                <li>{{ $detail->feeComponent->name }} – Php {{ number_format($detail->amount, 2) }}</li>
+                            @endforeach
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Total Amount</th>
+                    <td colspan="3">Php {{ number_format($txn->total_amount ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <th>Reason / Explanation</th>
+                    <td colspan="3">{{ $txn->void_reason }}</td>
+                </tr>
+                <tr>
+                    <th>Voided By</th>
+                    <td>
+                        {{ strtoupper(optional($txn->voidedBy)->fullname ?? $user->fullname) }}
+                    </td>
+                    <th>Date / Time Voided</th>
+                    <td>
+                        {{ \Carbon\Carbon::parse($txn->voided_at)->format('F d, Y h:i A') }}
+                    </td>
+                </tr>
+            </table>
+
+            <br>
+            <p style="text-align:justify; line-height:1.6;">
+                The above transaction has been verified and approved for voiding in accordance with office procedures.
+                The original official receipt has been properly marked <b>“VOID”</b> and retained for reference and audit purposes.
+            </p>
+
+            <br><br>
+
+            <table width="100%">
+                <tr>
+                    <td class="center" style="width:50%;font-size:12px;">
+                        <u>{{ strtoupper(optional($txn->voidedBy)->fullname ?? $user->fullname) }}</u><br>
+                        Voided By<br>
+                        {{ \Carbon\Carbon::parse($txn->voided_at)->format('F d, Y h:i A') }}
+                    </td>
+                    <td class="center" style="width:50%;font-size:12px;">
+                        <u>{{ strtoupper($user->office->head_of_consular_office ?? 'N/A') }}</u><br>
+                        Head of Consular Office
+                    </td>
+                </tr>
+            </table>
+
+            <br><br>
+            <p class="center" style="font-size:0.85em;">
+                (This certification page is automatically generated as part of the Daily Collections Report)
+            </p>
+
+        </div>
+    @endforeach
+
+@endif
 
 
 </body>

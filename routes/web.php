@@ -8,7 +8,7 @@ use Livewire\Volt\Volt;
 
 Route::redirect('/register', '/registration');
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 })->name('home');
 
 Route::view('dashboard', 'dashboard')
@@ -44,6 +44,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 });
 
 Route::get('/registration', [RegisterUserController::class, 'show'])->name('registration');
-Route::post('/registration', [RegisterUserController::class, 'store']);
+Route::post('/registration', [RegisterUserController::class, 'store'])->name('registration.store');
+Route::get('/client-register', [RegisterUserController::class, 'show'])->name('client.register');
+Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
+
+
+//SERVER APP
+Route::post('/register-user', [App\Http\Controllers\Api\ClientRegistrationController::class, 'store']);
+
 
 require __DIR__.'/auth.php';

@@ -83,11 +83,18 @@
                 <!-- Service Modal (for Add/Edit Service) -->
                 <x-modal-slide-over wire:model="showModal" title="{{ $serviceId ? 'Edit Service' : 'Add Service' }}">
                     <form wire:submit.prevent="save" class="space-y-4">
-                        <flux:select label="Type" wire:model="type">
-                            @foreach (\App\Models\Service::TYPES as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </flux:select>
+                        <flux:field label="Type">
+                            <select wire:model="type" class="w-full border rounded-md px-3 py-2 dark:bg-zinc-800">
+                                <option value="">-- Select Type --</option>
+                                @foreach (\App\Models\Service::TYPES as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+
+                            @error('type')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </flux:field>
                         <flux:input label="Name" wire:model.defer="name" class="dark:text-gray-100" />
                         <flux:input label="Description" wire:model.defer="description" class="dark:text-gray-100" />
 

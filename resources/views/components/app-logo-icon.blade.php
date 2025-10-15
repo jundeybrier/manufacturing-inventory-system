@@ -1,13 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 42" {{ $attributes }}>
-    <text
-        x="50%"
-        y="56%"
-        text-anchor="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="24"
-        font-weight="bold"
-        fill="currentColor"
-        letter-spacing="2"
-        dominant-baseline="middle"
-    >CS</text>
-</svg>
+<img
+    src="{{ asset('images/logo-light.png') }}"
+    alt="Logo"
+    {{ $attributes->merge(['class' => 'block dark:hidden h-10 w-auto']) }} />
+
+<img
+    src="{{ asset('images/logo-dark.png') }}"
+    alt="Logo"
+    {{ $attributes->merge(['class' => 'hidden dark:block h-10 w-auto']) }} />

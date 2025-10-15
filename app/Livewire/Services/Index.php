@@ -122,6 +122,7 @@ class Index extends BaseComponent
     public function save()
     {
         $this->validate([
+            'type' => 'required',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'is_active' => 'required|boolean',

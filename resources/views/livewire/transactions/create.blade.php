@@ -1,10 +1,10 @@
 <div>
-    @if (!$printerPath)
-        <div class="flex items-center bg-yellow-50 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded mb-4 gap-2">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Printer path is not set or unreachable.</span>
-        </div>
-    @elseif(!$alreadyOpenedToday && $activeSession)
+{{--    @if (!$printerPath)--}}
+{{--        <div class="flex items-center bg-yellow-50 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded mb-4 gap-2">--}}
+{{--            <i class="fas fa-exclamation-triangle"></i>--}}
+{{--            <span>Printer path is not set or unreachable.</span>--}}
+{{--        </div>--}}
+    @if(!$alreadyOpenedToday && $activeSession)
         <div class="flex items-center bg-red-50 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-800 dark:text-red-200 px-4 py-3 rounded mb-4 gap-2">
             <i class="fas fa-exclamation-triangle"></i>
             <span>You have an unclosed session ({{ \Carbon\Carbon::parse($activeSession->opened_at)->format('F d, Y') }}). Please close the session first.</span>
@@ -315,13 +315,16 @@
                                             <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                                 {{ \Carbon\Carbon::parse($transaction->created_at ?? $transaction->datetime_created)->format('h:i A') }}
                                             </td>
+
                                             <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200">
                                                 <div class="font-semibold">{{ $transaction->or_number }}</div>
-                                                <div class="text-xs text-gray-400">{{ $transaction->customer_name
-                                                    ?? trim(($transaction->firstname ?? '') . ' ' . ($transaction->middlename ?? '') . ' ' . ($transaction->lastname ?? ''))
-                                                    ?? '-' }}</div>
-
+                                                <div class="text-xs text-gray-400">
+                                                    {{ $transaction->customer_name
+                                                        ?? trim(($transaction->firstname ?? '') . ' ' . ($transaction->middlename ?? '') . ' ' . ($transaction->lastname ?? ''))
+                                                        ?? '-' }}
+                                                </div>
                                             </td>
+
                                             <td class="p-2 border border-gray-300 dark:border-gray-600 text-green-700 dark:text-green-400 font-bold text-right">
                                                 ₱{{ number_format($transaction->computedTotal, 2) }}
                                                 <div class="text-xs text-gray-400">
@@ -335,6 +338,16 @@
                                                         @endif
                                                     @endforeach
                                                 </div>
+
+                                                {{-- Void button --}}
+                                                @if(!$transaction->is_voided)
+                                                    <flux:button size="sm" tone="danger" class="mt-2"
+                                                                 wire:click="confirmVoid({{ $transaction->id }})">
+                                                        <i class="fas fa-ban mr-1"></i> Void
+                                                    </flux:button>
+                                                @else
+                                                    <div class="mt-2 text-xs text-red-500 font-semibold">(Voided)</div>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -350,6 +363,35 @@
                         </div>
                     </div>
                 </x-modal-slide-over>
+            @endif
+            @if($showVoidModal)
+                <x-modal wire:model="showVoidModal">
+                    <div class="p-6 space-y-4">
+                        <h2 class="text-lg font-bold flex items-center">
+                            <i class="fas fa-ban text-red-500 mr-2"></i> Void Transaction
+                        </h2>
+
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            Are you sure you want to void OR #{{ $selectedTransaction?->or_number }}?
+                        </div>
+
+                        <flux:textarea
+                            wire:model.defer="void_reason"
+                            label="Explanation / Reason"
+                            placeholder="Enter reason for voiding this transaction..."
+                            rows="3"
+                        />
+
+                        @error('void_reason')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+
+                        <div class="flex justify-end gap-2 mt-4">
+                            <flux:button variant="ghost" wire:click="$set('showVoidModal', false)">Cancel</flux:button>
+                            <flux:button tone="danger" wire:click="voidTransaction">Confirm Void</flux:button>
+                        </div>
+                    </div>
+                </x-modal>
             @endif
             @if($showConfirmModal)
                 <div
