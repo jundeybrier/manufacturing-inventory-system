@@ -51,6 +51,9 @@ class RegisterUserController extends Controller
                 ]);
 
                 $response = Http::withToken(config('services.server.token'))
+                    ->withHeaders([
+                        'Accept' => 'application/json',
+                    ])
                     ->timeout(15)
                     ->post($serverUrl, $data);
 
