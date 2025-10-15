@@ -49,8 +49,4 @@ Route::get('/client-register', [RegisterUserController::class, 'show'])->name('c
 Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
 
 
-//SERVER APP
-Route::post('/register-user', [App\Http\Controllers\Api\ClientRegistrationController::class, 'store']);
-
-
 require __DIR__.'/auth.php';

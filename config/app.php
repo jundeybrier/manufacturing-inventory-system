@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'mode' => env('APP_MODE', 'server'),
+    'site_code' => env('APP_SITE_CODE', null),
+
 ];

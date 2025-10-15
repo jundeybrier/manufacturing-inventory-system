@@ -13,16 +13,6 @@
 
         <form method="POST" action="{{ route('client.register.store') }}" class="flex flex-col gap-4">
             @csrf
-            <!-- Site Code -->
-            <flux:input
-                name="site_code"
-                :label="__('Site Code')"
-                type="text"
-                required
-                placeholder="e.g. CO-BUTUAN"
-                value="{{ old('site_code') }}"
-            />
-            @error('site_code') <span class="text-sm text-red-600">{{ $message }}</span> @enderror
             <!-- Name -->
             <flux:input
                 name="name"
