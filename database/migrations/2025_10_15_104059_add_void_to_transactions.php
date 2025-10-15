@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::table('transactions', function (Blueprint $table) {
             $table->boolean('is_voided')->default(false);
             $table->text('void_reason')->nullable();
-            $table->timestamp('voided_at')->nullable();
         });
     }
 
