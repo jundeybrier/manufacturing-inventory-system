@@ -41,7 +41,8 @@ class ClientRegistrationController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'site_code' => $validated['site_code'],
+                'office_id' => $validated['site_code'],
+                'branch_id' => $validated['site_code'],
                 'is_client_user' => true,
             ]);
 

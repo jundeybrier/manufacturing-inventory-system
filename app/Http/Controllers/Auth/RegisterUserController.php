@@ -32,6 +32,8 @@ class RegisterUserController extends Controller
             'password' => ['required', 'string', 'confirmed', 'min:8'],
         ]);
 
+        $data['site_code'] = config('app.site_code');
+
         Log::info('Input validated successfully.', [
             'email' => $data['email'],
             'site_code' => config('app.site_code'),
