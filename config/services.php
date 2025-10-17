@@ -38,6 +38,7 @@ return [
     'server' => [
         'url' => env('SERVER_API_URL'),
         'token' => env('SERVER_API_TOKEN'),
+        'verify_ssl' => env('SERVER_VERIFY_SSL', true),
     ],
 
     'client' => [

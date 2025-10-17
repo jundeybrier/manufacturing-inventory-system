@@ -23,52 +23,51 @@ class RegisterUserController extends Controller
     {
         Log::info('Registration attempt started.', [
             'mode' => config('app.mode'),
-            'ip' => $request->ip(),
+            'ip'   => $request->ip(),
         ]);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'password' => ['required', 'string', 'confirmed', 'min:8'],
         ]);
 
         $data['site_code'] = config('app.site_code');
 
         Log::info('Input validated successfully.', [
-            'email' => $data['email'],
-            'site_code' => config('app.site_code'),
+            'email'     => $data['email'],
+            'site_code' => $data['site_code'],
         ]);
 
         try {
             if (config('app.mode') === 'client') {
-                // 🔹 Step 1: Send request to server
+                // 🔹 Step 1: Send registration request to central server
                 $serverUrl = config('services.server.url') . '/api/register-user';
+
                 Log::info('Attempting to register on central server.', [
                     'server_url' => $serverUrl,
-                    'payload' => [
-                        'name' => $data['name'],
-                        'email' => $data['email'],
-                        'site_code' => config('app.site_code')
+                    'payload'    => [
+                        'name'      => $data['name'],
+                        'email'     => $data['email'],
+                        'site_code' => $data['site_code'],
                     ],
                 ]);
 
                 $response = Http::withToken(config('services.server.token'))
-                    ->withHeaders([
-                        'Accept' => 'application/json',
-                    ])
+                    ->when(config('services.server.verify_ssl', true) === false, fn($http) => $http->withoutVerifying())
+                    ->withHeaders(['Accept' => 'application/json'])
                     ->timeout(15)
                     ->post($serverUrl, $data);
 
-                // 🔹 Step 2: Log raw response
                 Log::info('Server responded.', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body'   => $response->body(),
                 ]);
 
-                if (!$response->successful()) {
+                if (! $response->successful()) {
                     Log::warning('Server registration failed.', [
                         'status' => $response->status(),
-                        'body' => $response->body(),
+                        'body'   => $response->body(),
                     ]);
 
                     throw ValidationException::withMessages([
@@ -76,41 +75,46 @@ class RegisterUserController extends Controller
                     ]);
                 }
 
-                $remoteUser = $response->json('user');
-                Log::info('Server returned user record.', [
+                // 🔹 Step 2: Parse central server response
+                $remoteUser = $response->json('client');
+                $uuid       = $remoteUser['uuid'] ?? null;
+
+                Log::info('Server returned client record.', [
                     'remote_user_id' => $remoteUser['id'] ?? null,
-                    'remote_email' => $remoteUser['email'] ?? null,
+                    'uuid'           => $uuid,
                 ]);
 
-                // 🔹 Step 3: Mirror the record locally
+                // 🔹 Step 3: Mirror record locally
                 $localUser = User::create([
-                    'id' => $remoteUser['id'] ?? null,
-                    'name' => $remoteUser['name'] ?? $data['name'],
-                    'email' => $remoteUser['email'] ?? $data['email'],
-                    'password' => Hash::make($data['password']),
-                    'site_code' => $remoteUser['site_code'] ?? $data['site_code'],
-                    'is_synced' => true,
+                    'id'            => $remoteUser['id'] ?? null,
+                    'uuid'          => $uuid, // 🆕 use built-in uuid field
+                    'name'          => $remoteUser['name'] ?? $data['name'],
+                    'email'         => $remoteUser['email'] ?? $data['email'],
+                    'password'      => Hash::make($data['password']),
+                    'site_code'     => $remoteUser['site_code'] ?? $data['site_code'],
+                    'is_client_user'=> true,
+                    'is_synced'     => true,
                 ]);
 
                 Log::info('Local user created successfully after server sync.', [
                     'local_user_id' => $localUser->id,
-                    'email' => $localUser->email,
+                    'uuid'          => $uuid,
                 ]);
 
             } else {
-                // 🔹 Step 4: Register directly in server mode
+                // 🔹 Step 4: Server mode — create user locally only
                 Log::info('Operating in server mode. Creating local user only.');
 
                 $localUser = User::create([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'password' => Hash::make($data['password']),
-                    'site_code' => config('app.site_code'),
+                    'name'      => $data['name'],
+                    'email'     => $data['email'],
+                    'password'  => Hash::make($data['password']),
+                    'site_code' => $data['site_code'],
                 ]);
 
                 Log::info('Local user created successfully (server mode).', [
                     'local_user_id' => $localUser->id,
-                    'email' => $localUser->email,
+                    'email'         => $localUser->email,
                 ]);
             }
 
@@ -122,7 +126,7 @@ class RegisterUserController extends Controller
         } catch (Throwable $e) {
             Log::error('Registration process failed.', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace'   => $e->getTraceAsString(),
             ]);
 
             return back()->withErrors([

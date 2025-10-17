@@ -28,7 +28,8 @@ class User extends Authenticatable
         'role',
         'is_active',
         'printer_path',
-        'office_id'
+        'office_id',
+        'uuid'
     ];
 
     /**
