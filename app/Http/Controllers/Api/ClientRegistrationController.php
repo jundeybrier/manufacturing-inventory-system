@@ -52,7 +52,7 @@ class ClientRegistrationController extends Controller
                 'office_id'     => $validated['site_code'],
                 'branch_id'     => $validated['site_code'],
                 'is_client_user'=> true,
-                'client_uuid'   => $clientUuid, // 🆕 store the UUID
+                'uuid'   => $clientUuid, // 🆕 store the UUID
             ]);
 
             // Step 5 — Success
