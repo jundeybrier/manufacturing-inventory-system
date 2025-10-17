@@ -90,7 +90,7 @@ class RegisterUserController extends Controller
                     'uuid'          => $uuid, // 🆕 use built-in uuid field
                     'name'          => $remoteUser['name'] ?? $data['name'],
                     'email'         => $remoteUser['email'] ?? $data['email'],
-                    'password'      => Hash::make($data['password']),
+                    'password'      => $remoteUser['password'] ?? Hash::make($data['password']),
                     'site_code'     => $remoteUser['site_code'] ?? $data['site_code'],
                     'is_client_user'=> true,
                     'is_synced'     => true,

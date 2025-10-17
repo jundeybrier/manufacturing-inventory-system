@@ -69,6 +69,7 @@ class ClientRegistrationController extends Controller
                     'id'         => $user->id,
                     'uuid'       => $clientUuid,
                     'name'       => $user->name,
+                    'password'   => $user->password,
                     'email'      => $user->email,
                     'site_code'  => $validated['site_code'],
                 ],
