@@ -103,6 +103,7 @@ class RegisterUserController extends Controller
                     'email'         => $remoteUser['email'] ?? $data['email'],
                     'password'      => $remoteUser['password'] ?? Hash::make($data['password']),
                     'site_code'     => $remoteUser['site_code'] ?? $data['site_code'],
+                    'office_id'     => $remoteUser['office_id'] ?? $data['site_code'],
                     'is_client_user'=> true,
                     'is_synced'     => true,
                 ]);
