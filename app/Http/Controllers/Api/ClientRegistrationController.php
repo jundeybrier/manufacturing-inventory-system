@@ -17,34 +17,45 @@ class ClientRegistrationController extends Controller
         Log::info('[ClientRegistration] Step 1: Received registration request', [
             'timestamp' => now()->toDateTimeString(),
             'ip' => $request->ip(),
-            'headers' => $request->headers->all(),
             'payload' => $request->except(['password', 'password_confirmation']),
         ]);
 
         try {
-            // Step 2 — Validation
-            Log::info('[ClientRegistration] Step 2: Validating input');
-
+            // Step 2 — Basic validation (no unique yet)
             $validated = $request->validate([
                 'name'      => 'required|string|max:255',
-                'email'     => 'required|email|unique:users,email',
+                'email'     => 'required|email',
                 'password'  => 'required|string|min:8',
                 'site_code' => 'required|string',
             ]);
 
-            // Step 3 — Generate client UUID
+            // Step 3 — Check if account already exists
+            $existingUser = User::where('email', $validated['email'])->first();
+
+            if ($existingUser) {
+                Log::info('[ClientRegistration] Existing user found, returning for sync', [
+                    'user_id' => $existingUser->id,
+                    'email'   => $existingUser->email,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Account already exists — returning existing record for sync.',
+                    'client'  => [
+                        'id'         => $existingUser->id,
+                        'uuid'       => $existingUser->uuid,
+                        'name'       => $existingUser->name,
+                        'email'      => $existingUser->email,
+                        'password'   => $existingUser->password,
+                        'site_code'  => $existingUser->office_id ?? $validated['site_code'],
+                    ],
+                ], 200);
+            }
+
+            // Step 4 — Generate client UUID
             $clientUuid = (string) Str::uuid();
-            Log::info('[ClientRegistration] Step 3: Generated client UUID', [
-                'uuid' => $clientUuid,
-            ]);
 
-            // Step 4 — Create user record
-            Log::info('[ClientRegistration] Step 4: Creating new user record', [
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'site_code' => $validated['site_code'],
-            ]);
-
+            // Step 5 — Create new user
             $user = User::create([
                 'name'          => $validated['name'],
                 'email'         => $validated['email'],
@@ -52,11 +63,10 @@ class ClientRegistrationController extends Controller
                 'office_id'     => $validated['site_code'],
                 'branch_id'     => $validated['site_code'],
                 'is_client_user'=> true,
-                'uuid'   => $clientUuid, // 🆕 store the UUID
+                'uuid'          => $clientUuid,
             ]);
 
-            // Step 5 — Success
-            Log::info('[ClientRegistration] Step 5: User created successfully', [
+            Log::info('[ClientRegistration] User created successfully', [
                 'user_id' => $user->id,
                 'email'   => $user->email,
                 'uuid'    => $clientUuid,
@@ -64,13 +74,13 @@ class ClientRegistrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Client registered successfully',
+                'message' => 'Client registered successfully.',
                 'client'  => [
                     'id'         => $user->id,
                     'uuid'       => $clientUuid,
                     'name'       => $user->name,
-                    'password'   => $user->password,
                     'email'      => $user->email,
+                    'password'   => $user->password,
                     'site_code'  => $validated['site_code'],
                 ],
             ], 201);
@@ -79,7 +89,6 @@ class ClientRegistrationController extends Controller
             Log::error('[ClientRegistration] Error occurred', [
                 'timestamp' => now()->toDateTimeString(),
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -88,4 +97,5 @@ class ClientRegistrationController extends Controller
             ], 500);
         }
     }
+
 }

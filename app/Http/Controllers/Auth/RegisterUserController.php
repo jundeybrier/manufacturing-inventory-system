@@ -70,8 +70,19 @@ class RegisterUserController extends Controller
                         'body'   => $response->body(),
                     ]);
 
+                    $message = 'Registration failed. Please try again.';
+
+                    // If the server returned JSON (Laravel-style)
+                    if ($response->json('message')) {
+                        $message = $response->json('message');
+                    } elseif ($response->json('errors.email.0')) {
+                        $message = $response->json('errors.email.0');
+                    } elseif ($response->status() === 409) {
+                        $message = 'This email is already registered.';
+                    }
+
                     throw ValidationException::withMessages([
-                        'email' => ['Registration failed: ' . $response->body()],
+                        'email' => [$message],
                     ]);
                 }
 
@@ -130,7 +141,9 @@ class RegisterUserController extends Controller
             ]);
 
             return back()->withErrors([
-                'email' => 'Server unavailable. Please try again later.',
+                'email' => $e instanceof ValidationException
+                    ? $e->errors()['email'][0]
+                    : 'Server unavailable. Please try again later.',
             ])->withInput();
         }
     }

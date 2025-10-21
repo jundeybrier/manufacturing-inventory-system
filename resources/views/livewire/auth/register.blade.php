@@ -19,19 +19,61 @@ new #[Layout('components.layouts.auth')] class extends Component {
      */
     public function register(): void
     {
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $this->resetErrorBag(); // clear any old errors from session or redirects
 
-        $validated['password'] = Hash::make($validated['password']);
+        try {
+            // 🔹 Local validation
+            $validated = $this->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+                'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            ]);
 
-        event(new Registered(($user = User::create($validated))));
+            // 🔹 Add site code if needed
+            $validated['site_code'] = config('app.site_code');
+            $validated['password'] = Hash::make($validated['password']);
 
-        Auth::login($user);
+            // 🔹 If in "client" mode — register via remote server
+            if (config('app.mode') === 'client') {
+                $serverUrl = config('services.server.url') . '/api/register-user';
+                $response = Http::withToken(config('services.server.token'))
+                    ->when(config('services.server.verify_ssl', true) === false, fn($http) => $http->withoutVerifying())
+                    ->withHeaders(['Accept' => 'application/json'])
+                    ->timeout(15)
+                    ->post($serverUrl, $validated);
 
-        $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+                if (! $response->successful()) {
+                    // Extract readable message from API
+                    $message = $response->json('errors.email.0')
+                        ?? $response->json('message')
+                        ?? ($response->status() === 409
+                            ? 'The email has already been taken.'
+                            : 'Registration failed. Please try again.');
+
+                    throw ValidationException::withMessages([
+                        'email' => [$message],
+                    ]);
+                }
+
+                $remoteUser = $response->json('client');
+                $validated['uuid'] = $remoteUser['uuid'] ?? null;
+            }
+
+            // 🔹 Create local user
+            $user = User::create($validated);
+
+            event(new Registered($user));
+            Auth::login($user);
+
+            $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+
+        } catch (ValidationException $e) {
+            // Show only the first relevant error
+            $this->addError('email', collect($e->errors()['email'] ?? [$e->getMessage()])->unique()->first());
+        } catch (\Throwable $e) {
+            // Generic catch for timeout, SSL, etc.
+            $this->addError('email', 'Unable to connect to server. Please try again later.');
+        }
     }
 }; ?>
 
@@ -61,6 +103,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
             required
             autocomplete="email"
             placeholder="email@example.com"
+            :show-errors="false"
         />
 
         <!-- Password -->
