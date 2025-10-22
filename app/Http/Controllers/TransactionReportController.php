@@ -16,7 +16,11 @@ class TransactionReportController extends Controller
         $user = auth()->user();
         $date = today();
         // Example: adjust these queries to your schema
-        $transactions = Transaction::with('details.service.feeComponents.account')
+        $transactions = Transaction::with([
+            'details.account',            // 👈 this is the key part
+            'details.service',
+            'details.feeComponent.account', // 👈 also include this for fallback
+        ])
             ->whereDate('created_at', $date)
             ->whereNull('voided_at')
             ->get();

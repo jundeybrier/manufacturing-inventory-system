@@ -4,11 +4,13 @@ namespace App\Livewire\Transactions;
 
 use App\Livewire\BaseComponent;
 use App\Models\CashierSession;
+use App\Models\Product;
 use App\Models\Service;
 use App\Models\SessionDenomination;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -25,8 +27,9 @@ class Create extends BaseComponent
     public $or_number;
     public $reference_number;
 
-    public $services = [];
+    public $products = [];
     public $selectedFees = [];
+    public $selectedServices = [];
 
     public $totalAmount = 0.00;
     public $amount_paid = 0.00;
@@ -51,6 +54,8 @@ class Create extends BaseComponent
     public bool $showConfirmModal = false;
     public $isRevalidated = false;
 
+    public $modalProduct = null;
+
     public $showVoidModal = false;
     public $selectedTransaction = null;
     public $void_reason = '';
@@ -58,30 +63,38 @@ class Create extends BaseComponent
 // This method is triggered by the button
     public function confirmSubmit()
     {
-        if($this->activeSession && !$this->alreadyOpenedToday) {
+        // Check for valid session
+        if (!$this->activeSession || !$this->alreadyOpenedToday) {
             $this->addError('session', 'No active cashiering session. Please open the register.');
             return;
         }
 
-        if(count($this->selectedFees) == 0) {
-            $this->addError('session', 'Please select a service.');
+        // Check if at least one service was selected
+        if (count($this->selectedServices) === 0) {
+            $this->addError('session', 'Please select at least one service.');
             return;
         }
 
+        // Validate basic inputs
         $this->validate([
-            'firstname'     => 'required',
-            'lastname'      => 'required',
-            'or_number'     => ['required', Rule::unique('transactions', 'or_number')],
-            'selectedFees'  => ['required', 'array', 'min:1'],
+            'firstname'        => 'required|string|max:255',
+            'lastname'         => 'required|string|max:255',
+            'or_number'        => ['required', 'integer', Rule::unique('transactions', 'or_number')],
+            'selectedServices' => ['required', 'array', 'min:1'],
         ]);
+
+        // ✅ Everything is valid — show confirmation modal
         $this->showConfirmModal = true;
     }
+
 
     public function mount()
     {
         $this->userId = auth()->id();
-        $this->services = Service::with([
-            'feeComponents' => function ($q) {
+
+        // Load products with their services and fee components
+        $this->products = Product::with([
+            'services.feeComponents' => function ($q) {
                 $q->where('is_active', 1)->with('account');
             }
         ])->where('is_active', 1)->get();
@@ -106,86 +119,113 @@ class Create extends BaseComponent
             ->exists();
     }
 
-    public function selectService($serviceId)
+    public function selectProduct($productId)
     {
-        $service = $this->services->where('id', $serviceId)->first();
-        if (!$service) return;
+        // ✅ Load product with all active services + fee components
+        $product = \App\Models\Product::with([
+            'services.feeComponents' => function ($q) {
+                $q->where('is_active', true);
+            }
+        ])->find($productId);
+
+        if (!$product) return;
 
         $hasVariable = false;
-        $hasDollar   = false;
+        $this->modalProduct = null;
+        $this->variableAmounts = [];
 
-        foreach ($service->feeComponents as $fee) {
-            if ($fee->is_variable) $hasVariable = true;
-            if ($fee->currency === 'USD') $hasDollar = true;
-        }
+        foreach ($product->services as $service) {
+            // Compute total for fixed PHP fees only
+            $fixedTotal = $service->feeComponents
+                ->where('is_variable', false)
+                ->sum('base_amount');
 
-        // If variable/dollar, open modal and don't add yet
-        if ($hasVariable || $hasDollar) {
-            $this->modalService = $service;
-            $this->variableAmounts = [];
+            $serviceHasVariable = $service->feeComponents
+                    ->where('is_variable', true)
+                    ->count() > 0;
 
-            foreach ($service->feeComponents as $fee) {
-                $this->variableAmounts[$fee->id] =
-                    ($fee->is_variable || $fee->currency === 'USD')
-                        ? null
-                        : $fee->base_amount;
-            }
+            // ✅ If this service has variable components, trigger modal
+            if ($serviceHasVariable) {
+                $hasVariable = true;
+                $this->modalProduct = $product;
 
-            // 🔒 Lock or fetch exchange rate for USD
-            if ($hasDollar) {
-                // Check if user already has locked rate for today
-                $lockedRate = \App\Models\TransactionDetail::whereHas('transaction', function ($q) {
-                    $q->where('user_id', auth()->id())
-                        ->whereDate('created_at', now()->toDateString()); // use created_at
-                })
-                    ->whereNotNull('exchange_rate')
-                    ->orderBy('id', 'asc')
-                    ->value('exchange_rate');
-
-                if ($lockedRate) {
-                    $this->usdConversionRate = $lockedRate;
-                    $this->isExchangeRateLocked = true; // 👈 add a flag
-                } else {
-                    $this->usdConversionRate = null;
-                    $this->isExchangeRateLocked = false;
+                // Pre-fill variableAmounts with null for all variable fees
+                foreach ($service->feeComponents as $fee) {
+                    if ($fee->is_variable) {
+                        $this->variableAmounts[$fee->id] = null;
+                    }
                 }
+
+                // ⚠️ Do NOT add variable services to $selectedServices yet
+                continue;
             }
 
-            $this->showVariableModal = true;
-            return;
-        }
+            // ✅ Add only fixed services immediately
+            $existing = collect($this->selectedServices)
+                ->firstWhere('service_id', $service->id);
 
-        // No variable/dollar fees → add directly
-        foreach ($service->feeComponents as $fee) {
-            $existingIndex = collect($this->selectedFees)
-                ->search(fn($f) => $f['fee_id'] === $fee->id);
-
-            if ($existingIndex !== false) {
-                $this->selectedFees[$existingIndex]['quantity'] += 1;
-            } else {
-                $this->selectedFees[] = [
-                    'fee_id'         => $fee->id,
-                    'fee_name'       => $fee->name,
-                    'service_id'     => $service->id,
-                    'service_name'   => $service->name,
-                    'quantity'       => 1,
-                    'price'          => $fee->base_amount,
-                    'currency'       => $fee->currency,
-                    'exchange_rate'  => $fee->currency === 'USD'
-                        ? $this->usdConversionRate
-                        : null,
+            if (!$existing) {
+                $this->selectedServices[] = [
+                    'product_id'   => $product->id,
+                    'product_name' => $product->name,
+                    'service_id'   => $service->id,
+                    'service_name' => $service->name,
+                    'quantity'     => 1,
+                    'amount'       => $fixedTotal,
+                    'has_variable' => false,
                 ];
+            } else {
+                foreach ($this->selectedServices as &$s) {
+                    if ($s['service_id'] === $service->id) {
+                        $s['quantity']++;
+                        break;
+                    }
+                }
             }
         }
 
         $this->recalculateTotal();
+
+        // ✅ If any variable fee exists, prepare USD rate logic
+        if ($hasVariable && $this->modalProduct) {
+            // 🔒 Check if user already has a locked USD conversion rate today
+            $lockedRate = \App\Models\TransactionDetail::whereHas('transaction', function ($q) {
+                $q->where('user_id', auth()->id())
+                    ->whereDate('created_at', now()->toDateString());
+            })
+                ->whereNotNull('exchange_rate')
+                ->orderBy('id', 'asc')
+                ->value('exchange_rate');
+
+            if ($lockedRate) {
+                $this->usdConversionRate = $lockedRate;
+                $this->isExchangeRateLocked = true;
+            } else {
+                $this->usdConversionRate = null;
+                $this->isExchangeRateLocked = false;
+            }
+
+            // ✅ Finally, show modal
+            $this->showVariableModal = true;
+
+            \Log::info('[selectProduct] Opened variable modal', [
+                'product_id' => $this->modalProduct->id,
+                'product_name' => $this->modalProduct->name,
+                'locked_rate' => $this->usdConversionRate,
+                'is_locked' => $this->isExchangeRateLocked,
+                'variableAmounts' => $this->variableAmounts,
+            ]);
+        }
     }
+
+
+
 
 
     public function closeVariableModal()
     {
         $this->showVariableModal = false;
-        $this->modalService = null;
+        $this->modalProduct = null; // ✅ was modalService
         $this->variableAmounts = [];
         $this->usdConversionRate = null;
     }
@@ -193,47 +233,50 @@ class Create extends BaseComponent
 
     public function applyVariableFees()
     {
-        if (!$this->modalService) return;
+        if (!$this->modalProduct) return;
 
-        $service = $this->modalService;
+        $product = $this->modalProduct;
 
-        foreach ($service->feeComponents as $fee) {
-            $amount = $fee->base_amount;
+        foreach ($product->services as $service) {
+            foreach ($service->feeComponents->where('is_active', true) as $fee) {
+                $rawInput = $this->variableAmounts[$fee->id] ?? null;
 
-            $dynamicServiceName = $service->name;
-            if ($fee->currency === 'USD' && $this->usdConversionRate) {
-                $dynamicServiceName .= " (@ ₱" . number_format($this->usdConversionRate, 2) . " per $)";
-            }
+                // Skip empty fields
+                if ($rawInput === null || $rawInput === '') continue;
 
-            if ($fee->is_variable || $fee->currency === 'USD') {
-                $inputAmount = $this->variableAmounts[$fee->id] ?? null;
-                if ($fee->currency === 'USD') {
-                    $rate = $this->usdConversionRate ?: 1;
-                    $amount = floatval($inputAmount) * floatval($rate);
+                $rate = ($fee->currency === 'USD' && $this->usdConversionRate)
+                    ? (float) $this->usdConversionRate
+                    : 1;
+
+                // Save the raw user-entered amount (USD if currency == USD)
+                $amount = (float) $rawInput;
+
+                // ✅ Update or create in selectedServices
+                $existingIndex = collect($this->selectedServices)->search(fn($s) => $s['service_id'] === $service->id);
+
+                if ($existingIndex === false) {
+                    $this->selectedServices[] = [
+                        'product_id'   => $product->id,
+                        'product_name' => $product->name,
+                        'service_id'   => $service->id,
+                        'service_name' => $service->name,
+                        'quantity'     => 1,
+                        'amount'       => $amount, // keep user-entered
+                        'has_variable' => true,
+                        'currency'     => $fee->currency ?? 'PHP',
+                    ];
                 } else {
-                    $amount = floatval($inputAmount);
+                    $this->selectedServices[$existingIndex]['amount'] = $amount;
+                    $this->selectedServices[$existingIndex]['currency'] = $fee->currency ?? 'PHP';
                 }
             }
-
-            $this->selectedFees[] = [
-                'fee_id'       => $fee->id,
-                'fee_name'     => $fee->name,
-                'service_id'   => $service->id,
-                'service_name' => $dynamicServiceName,
-                'quantity'     => 1,
-                'price'        => $inputAmount,
-                'exchange_rate'=> $rate,
-                'currency'     => $fee->currency, // always PHP for receipt/report
-            ];
         }
 
         $this->showVariableModal = false;
-        $this->modalService = null;
+        $this->modalProduct = null;
         $this->variableAmounts = [];
-        //$this->usdConversionRate = null;
         $this->recalculateTotal();
     }
-
 
     public function removeSelectedFee($feeId)
     {
@@ -245,106 +288,128 @@ class Create extends BaseComponent
         $this->recalculateTotal();
     }
 
+    public function removeSelectedService($serviceId)
+    {
+        $this->selectedServices = collect($this->selectedServices)
+            ->reject(fn($s) => $s['service_id'] === $serviceId)
+            ->values()
+            ->toArray();
+
+        $this->recalculateTotal();
+    }
+
     public function recalculateTotal()
     {
-        $this->totalAmount = collect($this->selectedFees)
-            ->sum(fn($f) => $f['price'] * $f['quantity']);
+        $this->totalAmount = collect($this->selectedServices)
+            ->sum(fn($s) => $s['amount'] * $s['quantity']);
     }
 
     public function submitTransaction()
     {
         $this->showConfirmModal = false;
-        if (!$this->activeSession) {
-            $this->addError('session', 'No active cashiering session. Please open the register.');
-            return;
-        }elseif($this->activeSession && !$this->alreadyOpenedToday) {
+
+        // 🔒 Validate session
+        if (!$this->activeSession || !$this->alreadyOpenedToday) {
             $this->addError('session', 'No active cashiering session. Please open the register.');
             return;
         }
 
+        // 🧩 Validate inputs
         $this->validate([
-            'firstname'     => 'required',
-            'lastname'      => 'required',
-            'or_number'     => ['required', Rule::unique('transactions', 'or_number')],
-            'selectedFees'  => ['required', 'array', 'min:1'],
+            'firstname'        => 'required|string|max:255',
+            'lastname'         => 'required|string|max:255',
+            'or_number'        => ['required', 'integer', Rule::unique('transactions', 'or_number')],
+            'selectedServices' => ['required', 'array', 'min:1'],
         ]);
 
-        // Compute total (if not precomputed)
-        $totalAmount = collect($this->selectedFees)->sum(function ($fee) {
-            return floatval($fee['price']) * intval($fee['quantity']);
+        // 💵 Store rate for reference
+        $usdRate = $this->usdConversionRate ?: null;
+
+        // 💰 Compute total (in PHP for display only)
+        $totalAmount = collect($this->selectedServices)->sum(function ($s) {
+            return floatval($s['amount']) * intval($s['quantity']);
         });
 
+        // 🧾 Create parent transaction
         $transaction = Transaction::create([
-            'or_number'      => $this->or_number,
-            'user_id'        => Auth::id(),
-            'office_id'      => Auth::user()->office_id ?? null,
-            'session_id'     => $this->activeSession->id ?? null,
-
-            'firstname'      => $this->firstname,
-            'middlename'     => $this->middlename,
-            'lastname'       => $this->lastname,
-            'rep_name'       => $this->rep_name,
-
-            'customer_name'  => trim(
-                $this->firstname . ' ' .
-                ($this->middlename ? $this->middlename . ' ' : '') .
-                $this->lastname
-            ),
-
-            'remarks'        => $this->remarks,
-            'total_amount'   => $totalAmount,
-            'currency'       => 'PHP', // Or $this->currency if supporting multiple
-            'exchange_rate'  => null,  // Or user input if using dollars
-            'status'         => 'completed',
-            'voided_by'      => null,
-            'voided_at'      => null,
-            'synced_at'      => null,
+            'or_number'     => $this->or_number,
+            'user_id'       => Auth::id(),
+            'office_id'     => Auth::user()->office_id ?? null,
+            'session_id'    => $this->activeSession->id ?? null,
+            'firstname'     => $this->firstname,
+            'middlename'    => $this->middlename,
+            'lastname'      => $this->lastname,
+            'rep_name'      => $this->rep_name,
+            'customer_name' => trim($this->firstname . ' ' . ($this->middlename ? $this->middlename . ' ' : '') . $this->lastname),
+            'remarks'       => $this->remarks,
+            'total_amount'  => $totalAmount, // still PHP-based display
+            'currency'      => 'PHP',
+            'exchange_rate' => $usdRate,     // record rate of the day
+            'status'        => 'completed',
         ]);
 
         $this->txn = $transaction;
 
-        foreach ($this->selectedFees as $fee) {
-            if (empty($fee['price']) || empty($fee['quantity'])) continue;
+        // 🧾 Store each fee component
+        foreach ($this->selectedServices as $s) {
+            $service = \App\Models\Service::with('feeComponents')->find($s['service_id']);
+            if (!$service) continue;
 
-            TransactionDetail::create([
-                'transaction_id'   => $transaction->id,
-                'fee_component_id' => $fee['fee_id'],
-                'service_id'       => $fee['service_id'] ?? null,
-                'account_id'       => $fee['account_id'] ?? null,
-                'description'      => $fee['fee_name'] ?? null,
-                'quantity'         => $fee['quantity'],
-                'amount'           => $fee['price'],
-                'exchange_rate'    => $this->usdConversionRate,
-                'total'            => $fee['price'] * $fee['quantity'],
-                'currency'         => $fee['currency'] ?? 'PHP',
-                'synced_at'        => null,
-            ]);
+            $components = $service->feeComponents->where('is_active', true);
+            if ($components->isEmpty()) continue;
+
+            foreach ($components as $fee) {
+                $isVariable = $s['has_variable'] ?? false;
+                $quantity   = intval($s['quantity']);
+
+                // ✅ get amount properly
+                if($isVariable) {
+                    $enteredAmount = $s['amount'];
+                }else{
+                    $enteredAmount = $fee->base_amount ?? 0;
+                }
+                if ($enteredAmount === null || $enteredAmount === '') $enteredAmount = 0;
+
+                $total = $enteredAmount * $quantity;
+
+                TransactionDetail::create([
+                    'transaction_id'   => $transaction->id,
+                    'fee_component_id' => $fee->id,
+                    'service_id'       => $service->id,
+                    'account_id'       => $fee->account_id,
+                    'description'      => $fee->name,
+                    'quantity'         => $quantity,
+                    'amount'           => $enteredAmount,
+                    'total'            => $total,
+                    'currency'         => $fee->currency ?? 'PHP',
+                    'exchange_rate'    => $fee->currency === 'USD' ? $usdRate : null,
+                ]);
+            }
         }
 
+        // 🖨️ Print receipt if enabled
         if ($this->printReceipt) {
             $this->dispatch('print-receipt', transactionId: $transaction->id);
         }
 
+        // 🔁 Reset
         $this->reset([
-            'firstname',
-            'middlename',
-            'lastname',
-            'rep_name',
-            'or_number',
-            'reference_number',
-            'amount_paid',
-            'remarks',
-            'selectedFees',
-            'totalAmount',
-            'usdConversionRate',
+            'firstname', 'middlename', 'lastname', 'rep_name',
+            'reference_number', 'amount_paid', 'remarks',
+            'selectedServices', 'totalAmount', 'usdConversionRate',
         ]);
+
         $this->recalculateTotal();
         $this->or_number = auth()->user()->nextOrNumber();
 
-        if($transaction->id){
+        // ✅ Success
+        if ($transaction->id) {
             $this->toast('success', 'Transaction successfully saved!');
         }
     }
+
+
+
 
     public function printReceipt(Transaction $transaction, bool $isRevalidated = false)
     {

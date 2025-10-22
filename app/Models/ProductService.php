@@ -1,20 +1,19 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
-class Product extends Model
+class ProductService extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
         'uuid',
-        'name',
-        'description',
-        'total_amount',
-        'is_active',
+        'product_id',
+        'service_id',
     ];
 
     protected static function booted()
@@ -28,13 +27,13 @@ class Product extends Model
 
     /** ─── Relationships ─── */
 
-    public function productServices()
+    public function product()
     {
-        return $this->hasMany(ProductService::class);
+        return $this->belongsTo(Product::class);
     }
 
-    public function services()
+    public function service()
     {
-        return $this->belongsToMany(Service::class, 'product_services');
+        return $this->belongsTo(Service::class);
     }
 }

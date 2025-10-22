@@ -32,4 +32,14 @@ class Service extends Model
     {
         return $this->hasMany(\App\Models\FeeComponent::class);
     }
+
+    public function productServices()
+    {
+        return $this->hasMany(ProductService::class);
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_services');
+    }
 }

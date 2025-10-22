@@ -81,45 +81,60 @@
         <div class="col-span-12 md:col-span-6 space-y-4">
             <div class="border border-gray-200 dark:border-zinc-700 shadow rounded-xl p-5 bg-white dark:bg-zinc-900/80">
                 <h2 class="font-bold text-lg mb-3 flex items-center gap-2">
-                    <i class="fas fa-cogs text-indigo-400"></i>
-                    Available Services
+                    <i class="fas fa-box-open text-indigo-400"></i>
+                    Available Products
                 </h2>
+
                 @if($activeSession && $alreadyOpenedToday)
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-2">
-                        @foreach ($services as $service)
+                        @foreach ($products as $product)
                             @php
-                                $fixedTotal = $service->feeComponents
-                                    ->where('is_active', true)
-                                    ->where('is_variable', false)
-                                    ->sum('base_amount');
-                                $hasVariable = $service->feeComponents
-                                    ->where('is_active', true)
-                                    ->where('is_variable', true)
-                                    ->count() > 0;
+                                $total = 0;
+                                $hasVariable = false;
+
+                                foreach ($product->services as $service) {
+                                    foreach ($service->feeComponents as $fee) {
+                                        if ($fee->is_active) {
+                                            if ($fee->is_variable) {
+                                                $hasVariable = true;
+                                            } else {
+                                                $total += $fee->base_amount;
+                                            }
+                                        }
+                                    }
+                                }
                             @endphp
+
                             <button
-                                wire:click="selectService({{ $service->id }})"
+                                wire:click="selectProduct({{ $product->id }})"
                                 class="w-full cursor-pointer text-left border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 bg-gray-50 dark:bg-zinc-900/60 hover:shadow hover:border-blue-400 dark:hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                                aria-label="Select {{ $service['name'] }}"
+                                aria-label="Select {{ $product->name }}"
                             >
                                 <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
-                                    {{ $service['name'] }}
+                                    {{ $product->name }}
                                 </div>
-                                @if($service->description)
+                                @if($product->description)
                                     <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
-                                        {{ $service->description }}
+                                        {{ $product->description }}
                                     </div>
                                 @endif
+
                                 <div class="mt-2 flex items-center gap-2">
-                                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
-                                        ₱{{ number_format($fixedTotal, 2) }}
-                                    </span>
+                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
+                        ₱{{ number_format($total, 2) }}
+                    </span>
                                     @if($hasVariable)
                                         <span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs border border-orange-400 text-orange-700 dark:border-orange-500 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/40 font-semibold">
-                                            + variable fee
-                                        </span>
+                            + variable
+                        </span>
                                     @endif
                                 </div>
+
+                                @if($product->services->count())
+                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Includes: {{ $product->services->pluck('name')->implode(', ') }}
+                                    </div>
+                                @endif
                             </button>
                         @endforeach
                     </div>
@@ -189,23 +204,43 @@
                     </tr>
                     </thead>
                     <tbody>
-                    @forelse ($selectedFees as $f)
+                    @forelse ($selectedServices as $s)
+                        @php
+                            // Determine rate
+                            $rate = ($s['currency'] ?? 'PHP') === 'USD'
+                                ? ($usdConversionRate ?? 1)
+                                : 1;
+
+                            // Compute total in both currencies
+                            $baseTotal = floatval($s['amount']) * intval($s['quantity']);
+                            $displayTotalPhp = $baseTotal * $rate;
+                        @endphp
+
                         <tr class="border-t border-gray-200 dark:border-gray-700">
                             <td class="py-2">
-                                <div class="font-semibold">{{ $f['fee_name'] }}</div>
-                                <div class="text-xs text-gray-400">{{ $f['service_name'] }}</div>
+                                <div class="font-semibold">{{ $s['service_name'] }}</div>
+                                <div class="text-xs text-gray-400">{{ $s['product_name'] }}</div>
+
+                                @if(($s['currency'] ?? 'PHP') === 'USD')
+                                    <div class="text-xs text-blue-500">
+                                        ${{ number_format($baseTotal, 2) }} × {{ number_format($rate, 2) }}
+                                    </div>
+                                @endif
                             </td>
+
                             <td class="py-2 text-center">
                                 <input type="number" min="1"
-                                       wire:model.defer="selectedFees.{{ $loop->index }}.quantity"
+                                       wire:model.defer="selectedServices.{{ $loop->index }}.quantity"
                                        class="w-12 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
                                        wire:change="recalculateTotal" />
                             </td>
+
                             <td class="py-2 text-right">
-                                {{ $f['currency'] }}{{ number_format($f['price'] * $f['quantity'], 2) }}
+                                ₱{{ number_format($displayTotalPhp, 2) }}
                             </td>
+
                             <td class="py-2 text-right">
-                                <button wire:click="removeSelectedFee({{ $f['fee_id'] }})"
+                                <button wire:click="removeSelectedService({{ $s['service_id'] }})"
                                         class="text-red-600 hover:underline">
                                     Remove
                                 </button>
@@ -213,7 +248,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-gray-500">No fees selected</td>
+                            <td colspan="4" class="text-center py-4 text-gray-500">No services selected</td>
                         </tr>
                     @endforelse
                     </tbody>
@@ -243,24 +278,36 @@
 {{--            VARIABLE AMOUNT--}}
             <x-modal-slide-over wire:model="showVariableModal" title="Set Fee Amounts">
                 <div>
-                    @if($modalService && $modalService->feeComponents)
-                        @foreach ($modalService->feeComponents as $fee)
-                            <div class="mb-3">
-                                <label class="block text-sm font-medium mb-1">
-                                    {{ $fee->name }}
-                                    @if($fee->currency === 'USD')
-                                        <span class="ml-2 text-xs text-blue-500">(in $)</span>
-                                    @endif
-                                </label>
-                                <input type="number" min="0" step="0.01"
-                                       wire:model.defer="variableAmounts.{{ $fee->id }}"
-                                       placeholder="{{ $fee->is_variable ? 'Enter amount' : number_format($fee->base_amount,2) }}"
-                                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
-                                       @if(!$fee->is_variable && $fee->currency !== 'USD') disabled @endif
-                                />
+                    @if($modalProduct && $modalProduct->services)
+                        @foreach ($modalProduct->services as $service)
+                            <div class="mb-4 border-b border-gray-300 dark:border-gray-700 pb-2">
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                    {{ $service->name }}
+                                </h4>
+
+                                @foreach ($service->feeComponents->where('is_variable', true) as $fee)
+                                    <div class="mb-2">
+                                        <label class="block text-xs font-medium mb-1">
+                                            {{ $fee->name }}
+                                            @if($fee->currency === 'USD')
+                                                <span class="ml-1 text-blue-500">(USD)</span>
+                                            @endif
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            wire:model.defer="variableAmounts.{{ $fee->id }}"
+                                            placeholder="Enter amount"
+                                            class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
+                                        />
+                                    </div>
+                                @endforeach
                             </div>
                         @endforeach
-                        @if($modalService->feeComponents->where('currency', 'USD')->count())
+
+                        {{-- USD Exchange Rate --}}
+                        @if(collect($modalProduct->services)->flatMap->feeComponents->where('currency', 'USD')->count())
                             <div class="mb-3">
                                 <label class="block text-sm font-medium">USD Exchange Rate</label>
 
@@ -281,12 +328,13 @@
                         @endif
                     @endif
 
-                    <div class="flex justify-end mt-4">
-                        <flux:button wire:click="applyVariableFees" class="mr-2"><i class="fas fa-save mr-1"></i> OK</flux:button>
+                    <div class="flex justify-end mt-4 space-x-2">
+                        <flux:button wire:click="applyVariableFees"><i class="fas fa-save mr-1"></i> OK</flux:button>
                         <flux:button variant="ghost" wire:click="$set('showVariableModal', false)">Cancel</flux:button>
                     </div>
                 </div>
             </x-modal-slide-over>
+
 
             <x-modal-slide-over wire:model="showCloseModal" title="Set Fee Amounts">
                 @include('livewire.transactions.breakdown-form')
@@ -311,12 +359,24 @@
                                     </thead>
                                     <tbody>
                                     @foreach($todayHistory as $transaction)
+                                        @php
+                                            // ✅ Group details by service
+                                            $serviceGroups = $transaction->details
+                                                ->groupBy('service_id')
+                                                ->map(function($items) {
+                                                    return [
+                                                        'service_name' => $items->first()->service->name ?? 'Unknown Service',
+                                                        'total' => $items->sum('total'),
+                                                    ];
+                                                });
+                                        @endphp
+
                                         <tr>
-                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap align-top">
                                                 {{ \Carbon\Carbon::parse($transaction->created_at ?? $transaction->datetime_created)->format('h:i A') }}
                                             </td>
 
-                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200">
+                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 align-top">
                                                 <div class="font-semibold">{{ $transaction->or_number }}</div>
                                                 <div class="text-xs text-gray-400">
                                                     {{ $transaction->customer_name
@@ -325,19 +385,18 @@
                                                 </div>
                                             </td>
 
-                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-green-700 dark:text-green-400 font-bold text-right">
+                                            <td class="p-2 border border-gray-300 dark:border-gray-600 text-green-700 dark:text-green-400 font-bold text-right align-top">
                                                 ₱{{ number_format($transaction->computedTotal, 2) }}
-                                                <div class="text-xs text-gray-400">
-                                                    @foreach($transaction->details as $detail)
+
+                                                {{-- 💡 Now show services instead of individual fees --}}
+                                                <ul class="text-xs text-gray-400 text-left mt-1 ml-1">
+                                                    @foreach($serviceGroups as $service)
                                                         <li>
-                                                            <span class="font-medium">{{ $detail->quantity }} × {{ $detail->description ?? $detail->name }}</span>
-                                                            @ {{ $detail->currency ?? 'PHP' }}{{ number_format($detail->amount, 2) }}
+                                                            <span class="font-medium">{{ $service['service_name'] }}</span> —
+                                                            ₱{{ number_format($service['total'], 2) }}
                                                         </li>
-                                                        @if($detail->currency === 'USD')
-                                                            <li>1 USD = PHP {{ number_format($detail->exchange_rate,2)}}</li>
-                                                        @endif
                                                     @endforeach
-                                                </div>
+                                                </ul>
 
                                                 {{-- Void button --}}
                                                 @if(!$transaction->is_voided)

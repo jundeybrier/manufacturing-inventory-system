@@ -33,7 +33,48 @@
 @php
     $types = ['passport', 'authentication', 'notarials', 'others'];
     $grandTotal = 0;
+
+    $allDetails = collect($transactions)
+        ->reject(fn($txn) => $txn->is_voided ?? false)
+        ->flatMap(fn($txn) => $txn->details->whereNotNull('fee_component_id'));
+
+    $grouped = $allDetails
+        ->groupBy(fn($d) => strtolower($d->service->type ?? 'others'))
+        ->map(function ($typeGroup) {
+            return $typeGroup
+                ->groupBy(fn($d) => $d->service->name)
+                ->map(function ($serviceGroup) {
+                    return $serviceGroup
+                        ->groupBy(fn($d) => $d->feeComponent->name ?? 'Unspecified Component')
+                        ->map(function ($componentGroup) {
+                            $sample = $componentGroup->first();
+                            $workUnits = $componentGroup->sum('quantity');
+                            $unitPrice = (float) $sample->amount;
+                            $amount = $componentGroup->sum('total');
+                            $rate = $sample->exchange_rate ?? 1;
+
+                            // ✅ Convert USD → PHP
+                            $converted = ($sample->currency === 'USD')
+                                ? $amount * $rate
+                                : $amount;
+
+                            return [
+                                'component'   => $sample->feeComponent->name ?? 'Unspecified',
+                                'currency'    => $sample->currency ?? 'PHP',
+                                'work_units'  => $workUnits,
+                                'unit_price'  => $unitPrice,
+                                'amount'      => $amount,
+                                'rate'        => $sample->currency === 'USD' ? $rate : null,
+                                'converted'   => $converted,
+                            ];
+                        })
+                        ->sortKeys();
+                })
+                ->sortKeys();
+        })
+        ->sortKeysUsing(fn($a, $b) => array_search($a, $types) <=> array_search($b, $types));
 @endphp
+
 
 <table border="1">
     <thead>
@@ -48,41 +89,81 @@
     </tr>
     </thead>
     <tbody>
-    @foreach ($grouped as $type => $components)
-        @php $typeTotal = collect($components)->sum('converted'); @endphp
+    @foreach ($grouped as $type => $services)
+        @php $typeTotal = 0; @endphp
+
         <tr>
-            <td><u><b>{{ $type }}</b></u></td>
-            <td colspan="6"></td>
+            <td colspan="7"><u><b>{{ strtoupper($type) }}</b></u></td>
         </tr>
 
-        @foreach ($components as $row)
-            <tr>
-                <td>{{ $row['component'] }}</td>
-                <td class="center">{{ $row['work_units'] }}</td>
-                <td class="center">{{ number_format($row['unit_price'], 2) }}</td>
-                <td class="center">{{ number_format($row['amount'], 2) }}</td>
-                <td class="center">{{ $row['rate'] ? number_format($row['rate'], 2) : '-' }}</td>
-                <td class="right">{{ number_format($row['converted'], 2) }}</td>
+        @foreach ($services as $serviceName => $components)
+            @php
+                $serviceTotal = collect($components)->sum('converted');
+                $typeTotal += $serviceTotal;
+                $componentCount = count($components);
+            @endphp
 
-                @if ($loop->last)
-                    <td class="right">{{ number_format($typeTotal, 2) }}</td>
-                @else
-                    <td></td>
-                @endif
-            </tr>
+            {{-- If only one fee component, show it directly as the service row --}}
+            @if ($componentCount === 1)
+                @php $c = $components->first(); @endphp
+                <tr>
+                    <td>{{ $serviceName }}</td>
+                    <td class="center">{{ $c['work_units'] }}</td>
+                    <td class="center">{{ number_format($c['unit_price'], 2) }}</td>
+                    <td class="center">{{ number_format($c['amount'], 2) }}</td>
+                    <td class="center">{{ $c['rate'] !== null ? number_format($c['rate'], 2) : '-' }}</td>
+                    <td class="right">{{ number_format($c['converted'], 2) }}</td>
+                    <td class="right"><b>{{ number_format($serviceTotal, 2) }}</b></td>
+                </tr>
+            @else
+                {{-- Otherwise, show service row + subrows for each component --}}
+                <tr>
+                    <td><b>{{ $serviceName }}</b></td>
+                    <td colspan="6"></td>
+                </tr>
+
+                @foreach ($components as $c)
+                    <tr>
+                        <td>&nbsp;&nbsp;&nbsp;{{ $c['component'] }}</td>
+                        <td class="center">{{ $c['work_units'] }}</td>
+                        <td class="center">{{ number_format($c['unit_price'], 2) }}</td>
+                        <td class="center">{{ number_format($c['amount'], 2) }}</td>
+                        <td class="center">{{ $c['rate'] !== null ? number_format($c['rate'], 2) : '-' }}</td>
+                        <td class="right">{{ number_format($c['converted'], 2) }}</td>
+                        @if ($loop->last)
+                            <td class="right"><b>{{ number_format($serviceTotal, 2) }}</b></td>
+                        @else
+                            <td></td>
+                        @endif
+                    </tr>
+                @endforeach
+            @endif
         @endforeach
+
+        {{-- Subtotal per type --}}
+        <tr>
+            <td class="right"><b>TOTAL {{ strtoupper($type) }}</b></td>
+            <td colspan="4"></td>
+            <td class="right"><b>{{ number_format($typeTotal, 2) }}</b></td>
+            <td></td>
+        </tr>
 
         @php $grandTotal += $typeTotal; @endphp
     @endforeach
 
+    {{-- Grand total --}}
     <tr>
-        <td class=""><b>TOTAL</b></td>
+        <td><b>GRAND TOTAL</b></td>
         <td colspan="4"></td>
         <td class="right">{{ number_format($grandTotal, 2) }}</td>
         <td class="double-bottom right"><b>{{ number_format($grandTotal, 2) }}</b></td>
     </tr>
     </tbody>
 </table>
+
+
+
+
 
 
 
@@ -314,7 +395,6 @@
 
 
 <div style="page-break-after: always;"></div>
-{{-- SUMMARY OF DAILY TRANSACTIONS --}}
 <table width="100%">
     <tr>
         <td>
@@ -325,60 +405,97 @@
         </td>
     </tr>
 </table>
+
 <br>
-<table border="1">
+
+<table border="1" width="100%" cellspacing="0" cellpadding="3">
     <thead>
     <tr>
-        <th style="width: 3%;">#</th>
-        <th style="width: 5%;">Ref #</th>
-        <th style="width: 5%;">OR #</th>
-        <th style="width: 30%;">Services Availed</th>
-        <th style="width: 5%;">Quantity</th>
+        <th style="width:3%;">#</th>
+        <th style="width:6%;">Ref #</th>
+        <th style="width:6%;">OR #</th>
+        <th style="width:30%;">Service Availed</th>
+        <th style="width:5%;">Qty</th>
         @foreach ($allAccounts as $account)
             <th>{{ $account }}</th>
         @endforeach
-        <th style="width: 12%;">Total</th>
+        <th style="width:10%;">Total</th>
     </tr>
     </thead>
+
     <tbody>
     @php
         $grandTotal = 0;
         $accountTotals = array_fill_keys($allAccounts->toArray(), 0);
         $txnCountTotal = 0;
+        $rowIndex = 1;
+
+        $details = collect($transactions)
+            ->reject(fn($txn) => $txn->is_voided ?? false)
+            ->flatMap(fn($txn) => $txn->details->map(fn($d) => [
+                'ref_no'        => $txn->ref_no,
+                'or_number'     => $txn->or_number,
+                'service_id'    => $d->service_id,
+                'service'       => $d->service->name ?? 'Unknown Service',
+                'account_name'  => $d->account->name ?? 'Unassigned',
+                'amount'        => $d->amount,
+                'total'         => $d->total,
+                'quantity'      => $d->quantity,
+                'exchange_rate' => $d->exchange_rate,
+                'currency'      => $d->currency,
+            ]))
+            ->groupBy('service_id');
     @endphp
 
-    @foreach ($transactions as $i => $txn)
+    @foreach ($details as $serviceId => $items)
+        @php
+            $serviceName = $items->first()['service'];
+            $refNo = $items->first()['ref_no'];
+            $orNo = $items->first()['or_number'];
+            $qty = $items->sum('quantity');
 
-        @foreach ($txn->details as $txnDetails)
-            @php
-                $rowTotal = 0;
-                $txnCountTotal += $txn->details->first()->quantity;
-            @endphp
-            <tr>
-                <td>{{ $i + 1 }}</td>
-                <td>{{ $txn->ref_no }}</td>
-                <td>{{ $txn->or_number }}</td>
-                <td>{{ $txnDetails->feeComponent->name }}</td>
-                <td class="center">{{ $txn->details->first()->quantity }}</td>
+            // initialize all accounts to 0
+            $rowAccounts = array_fill_keys($allAccounts->toArray(), 0);
 
-                @foreach ($allAccounts as $acc)
-                    @php
-                        $row = $txnDetails->getTotalAccount($acc);
-                        $rowTotal += $row;
-                        $accountTotals[$acc] += $row;
-                    @endphp
-                    <td class="right">
-                        {{ number_format($row, 2) }}
-                    </td>
-                @endforeach
+            foreach ($items as $d) {
+                // convert USD to PHP
+                $converted = $d['currency'] === 'USD' && $d['exchange_rate']
+                    ? $d['total'] * $d['exchange_rate']
+                    : $d['total'];
 
-                @php $grandTotal += $rowTotal; @endphp
-                <td class="right font-bold">
-                    {{ number_format($rowTotal, 2) }}
+                $accName = $d['account_name'] ?? 'Unassigned';
+                if (!array_key_exists($accName, $rowAccounts)) {
+                    $rowAccounts[$accName] = 0; // dynamically add unseen account
+                    $accountTotals[$accName] = $accountTotals[$accName] ?? 0;
+                }
+
+                $rowAccounts[$accName] += $converted;
+            }
+
+            $rowTotal = array_sum($rowAccounts);
+            $grandTotal += $rowTotal;
+            $txnCountTotal += $qty;
+
+            foreach ($rowAccounts as $acc => $val) {
+                $accountTotals[$acc] += $val;
+            }
+        @endphp
+
+        <tr>
+            <td>{{ $rowIndex++ }}</td>
+            <td>{{ $refNo }}</td>
+            <td>{{ $orNo }}</td>
+            <td>{{ $serviceName }}</td>
+            <td class="center">{{ $qty }}</td>
+
+            @foreach ($allAccounts as $acc)
+                <td class="right">
+                    {{ $rowAccounts[$acc] > 0 ? number_format($rowAccounts[$acc], 2) : '' }}
                 </td>
-            </tr>
-        @endforeach
+            @endforeach
 
+            <td class="right font-bold">{{ number_format($rowTotal, 2) }}</td>
+        </tr>
     @endforeach
 
     {{-- TOTAL ROW --}}
@@ -390,8 +507,11 @@
         @endforeach
         <td class="right font-bold">{{ number_format($grandTotal, 2) }}</td>
     </tr>
+
     </tbody>
 </table>
+
+
 @php
     $voidedTransactions = \App\Models\Transaction::with(['details', 'voidedBy'])
         ->whereDate('voided_at', $date)

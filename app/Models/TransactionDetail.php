@@ -35,6 +35,11 @@ class TransactionDetail extends Model
         return $this->hasMany(TransactionAllocation::class, 'transaction_detail_id');
     }
 
+    public function account()
+    {
+        return $this->belongsTo(\App\Models\Account::class, 'account_id');
+    }
+
     public function service()
     {
         return $this->belongsTo(Service::class, 'service_id');

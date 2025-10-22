@@ -36,6 +36,7 @@ Route::get('/print/receipt/{transaction}', [\App\Http\Controllers\ReceiptControl
     ->name('print.receipt');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/products', \App\Livewire\Products\Index::class)->name('products.index');
     Route::get('/services', \App\Livewire\Services\Index::class)->name('services.index');
     Route::get('/accounts', \App\Livewire\Accounts\Index::class)->name('accounts.index');
     Route::get('/fee-components', \App\Livewire\FeeComponents\Index::class)->name('fee-components.index');
