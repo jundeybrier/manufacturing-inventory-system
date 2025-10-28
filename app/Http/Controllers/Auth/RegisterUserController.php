@@ -122,6 +122,7 @@ class RegisterUserController extends Controller
                     'email'     => $data['email'],
                     'password'  => Hash::make($data['password']),
                     'site_code' => $data['site_code'],
+                    'office_id' => $data['site_code'],
                 ]);
 
                 Log::info('Local user created successfully (server mode).', [

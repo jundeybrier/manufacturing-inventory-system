@@ -60,6 +60,8 @@ new #[Layout('components.layouts.auth')] class extends Component {
                 $validated['uuid'] = $remoteUser['uuid'] ?? null;
             }
 
+            dd($validated);
+
             // 🔹 Create local user
             $user = User::create($validated);
 
@@ -79,8 +81,25 @@ new #[Layout('components.layouts.auth')] class extends Component {
 }; ?>
 
 <div class="flex flex-col gap-6">
-    <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
-
+    <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account1')" />
+    <div class="mt-4 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-300/50
+                bg-zinc-100/60 dark:bg-zinc-800/60 dark:border-zinc-700/50
+                text-xs text-zinc-600 dark:text-zinc-400 shadow-sm">
+            <x-lucide-cpu class="w-3.5 h-3.5 text-emerald-500" />
+            <span class="uppercase tracking-wide font-medium">
+            Running in
+            <span class="text-emerald-600 dark:text-emerald-400">
+                {{ ucfirst(config('app.mode')) }} Mode
+            </span>
+        </span>
+            @if (config('app.site_code'))
+                <span class="ml-2 text-[10px] text-zinc-400">
+                (Site {{ config('app.site_code') }})
+            </span>
+            @endif
+        </div>
+    </div>
     <!-- Session Status -->
     <x-auth-session-status class="text-center" :status="session('status')" />
 

@@ -7,6 +7,24 @@
             {{ __('Enter your details below to create your account') }}
         </p>
 
+        <div class="mt-4 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-300/50
+                bg-zinc-100/60 dark:bg-zinc-800/60 dark:border-zinc-700/50
+                text-xs text-zinc-600 dark:text-zinc-400 shadow-sm">
+                <span class="uppercase tracking-wide font-medium">
+            Running in
+            <span class="text-emerald-600 dark:text-emerald-400">
+                {{ ucfirst(config('app.mode')) }} Mode
+            </span>
+        </span>
+                @if (config('app.site_code'))
+                    <span class="ml-2 text-[10px] text-zinc-400">
+                (Site {{ config('app.site_code') }})
+            </span>
+                @endif
+            </div>
+        </div>
+
         @if (session('status'))
             <div class="text-green-600 text-sm text-center">{{ session('status') }}</div>
         @endif
