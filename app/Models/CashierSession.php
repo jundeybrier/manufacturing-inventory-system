@@ -61,6 +61,7 @@ class CashierSession extends Model
         return Transaction::whereDate('created_at', \Carbon\Carbon::parse($this->opened_at)->toDateString())
             ->where('user_id', $this->user_id)
             ->with('details')
+            ->whereNull('voided_at')
             ->get()
             ->sum(fn ($transaction) => $transaction->computed_total);
     }

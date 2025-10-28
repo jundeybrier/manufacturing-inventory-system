@@ -1,15 +1,26 @@
-FROM php:8.3-fpm
+FROM php:8.3-fpm-alpine
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    git zip unzip curl libpng-dev libonig-dev libxml2-dev libzip-dev \
-    && docker-php-ext-install pdo pdo_mysql zip mbstring exif pcntl bcmath gd
+# Install PHP extensions and tools
+RUN apk add --no-cache \
+    icu-dev libzip-dev oniguruma-dev zip unzip git bash curl supervisor \
+    && docker-php-ext-install pdo_mysql intl zip bcmath opcache
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Install Composer globally
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www
+WORKDIR /var/www/html
 
+# Copy the Laravel app source
 COPY . .
 
-RUN composer install --no-interaction --optimize-autoloader
+# Set permissions
+RUN chown -R www-data:www-data storage bootstrap/cache
+
+# Optimize Laravel
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache || true
+
+EXPOSE 9000
+CMD ["php-fpm"]

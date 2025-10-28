@@ -160,14 +160,6 @@
     </tr>
     </tbody>
 </table>
-
-
-
-
-
-
-
-
 <br>
 {{-- ISSUED OR RANGE --}}
 <table>
@@ -178,19 +170,62 @@
         <td class="center" colspan="2"><b># of Official Receipt(s) Issued</b></td>
         <td colspan="1"></td>
     </tr>
+
     @php
-        $orNumbers = $transactions->pluck('or_number')->sort()->values();
-        $orStart = $orNumbers->first();
-        $orEnd = $orNumbers->last();
+        $orNumbers = $transactions->pluck('or_number')
+            ->filter(fn($n) => is_numeric($n))
+            ->sort()
+            ->values()
+            ->toArray();
+
+        $series = [];
+        $start = null;
+        $prev = null;
+
+        foreach ($orNumbers as $num) {
+            if ($start === null) {
+                $start = $num;
+                $prev = $num;
+                continue;
+            }
+
+            // Check if sequence continues
+            if ($num == $prev + 1) {
+                $prev = $num;
+            } else {
+                $series[] = ['from' => $start, 'to' => $prev];
+                $start = $num;
+                $prev = $num;
+            }
+        }
+
+        if ($start !== null) {
+            $series[] = ['from' => $start, 'to' => $prev];
+        }
     @endphp
+
+    @foreach ($series as $s)
+        @php
+            $count = $s['to'] - $s['from'] + 1;
+        @endphp
+        <tr>
+            <td colspan="2"></td>
+            <td class="center">{{ $s['from'] }}</td>
+            <td class="center">{{ $s['to'] }}</td>
+            <td class="center" colspan="2">{{ $count }}</td>
+            <td></td>
+        </tr>
+    @endforeach
+
+    {{-- Optional total summary --}}
+    @php $totalIssued = collect($series)->sum(fn($s) => $s['to'] - $s['from'] + 1); @endphp
     <tr>
-        <td colspan="2"></td>
-        <td class="center">{{ $orStart }}</td>
-        <td class="center">{{ $orEnd }}</td>
-        <td class="center" colspan="2">{{ ($orEnd - $orStart) + 1 }}</td>
-        <td colspan="1"></td>
+        <td colspan="4" class="right"><b>TOTAL OR ISSUED</b></td>
+        <td class="center" colspan="2"><b>{{ $totalIssued }}</b></td>
+        <td></td>
     </tr>
 </table>
+
 
 <br>
 
@@ -352,31 +387,63 @@
 
     @foreach ($transactions as $i => $txn)
         @php
-            $rowTotal = 0;
-            $txnCountTotal += $txn->details->first()->quantity;
+            // --- Compute # of Txns (work units) correctly:
+            // group details by service, sum their quantities, then sum across services
+            $workUnits = $txn->details
+                ->groupBy('service_id')
+                ->map(fn($g) => $g->sum('quantity'))
+                ->sum();
+
+            $txnCountTotal += $workUnits;
+
+            // --- Build per-account PHP totals for this transaction row
+            $rowAccounts = array_fill_keys($allAccounts->toArray(), 0);
+
+            foreach ($txn->details as $d) {
+                // Resolve account display name
+                $accName = optional($d->account)->name
+                    ?? optional(optional($d->feeComponent)->account)->name
+                    ?? 'Unassigned';
+
+                // Compute PHP value for this detail (convert USD if needed)
+                $detailPhp = ($d->currency === 'USD' && $d->exchange_rate)
+                    ? ($d->total * (float) $d->exchange_rate)
+                    : $d->total;
+
+                // Ensure the account exists in the row map (handles unseen accounts safely)
+                if (!array_key_exists($accName, $rowAccounts)) {
+                    $rowAccounts[$accName] = 0;
+                    if (!array_key_exists($accName, $accountTotals)) {
+                        $accountTotals[$accName] = 0;
+                    }
+                }
+
+                $rowAccounts[$accName] += (float) $detailPhp;
+            }
+
+            $rowTotal = array_sum($rowAccounts);
+            $grandTotal += $rowTotal;
+
+            // add to column totals
+            foreach ($rowAccounts as $acc => $val) {
+                $accountTotals[$acc] += $val;
+            }
         @endphp
+
         <tr>
             <td>{{ $i + 1 }}</td>
             <td>{{ $txn->ref_no }}</td>
             <td>{{ $txn->or_number }}</td>
             <td>{{ $txn->fullname }}</td>
-            <td class="center">{{ $txn->details->first()->quantity }}</td>
+            <td class="center">{{ $workUnits }}</td>
 
             @foreach ($allAccounts as $acc)
-                @php
-                    $row = $txn->getTotalAccount($acc);
-                    $rowTotal += $row;
-                    $accountTotals[$acc] += $row;
-                @endphp
                 <td class="right">
-                    {{ number_format($row, 2) }}
+                    {{ ($rowAccounts[$acc] ?? 0) > 0 ? number_format($rowAccounts[$acc], 2) : '' }}
                 </td>
             @endforeach
 
-            @php $grandTotal += $rowTotal; @endphp
-            <td class="right font-bold">
-                {{ number_format($rowTotal, 2) }}
-            </td>
+            <td class="right font-bold">{{ number_format($rowTotal, 2) }}</td>
         </tr>
     @endforeach
 
@@ -385,10 +452,11 @@
         <td colspan="4" class="right font-bold">TOTAL</td>
         <td class="center font-bold">{{ $txnCountTotal }}</td>
         @foreach ($allAccounts as $acc)
-            <td class="right font-bold">{{ number_format($accountTotals[$acc], 2) }}</td>
+            <td class="right font-bold">{{ number_format($accountTotals[$acc] ?? 0, 2) }}</td>
         @endforeach
         <td class="right font-bold">{{ number_format($grandTotal, 2) }}</td>
     </tr>
+
     </tbody>
 </table>
 
@@ -429,81 +497,80 @@
         $accountTotals = array_fill_keys($allAccounts->toArray(), 0);
         $txnCountTotal = 0;
         $rowIndex = 1;
-
-        $details = collect($transactions)
-            ->reject(fn($txn) => $txn->is_voided ?? false)
-            ->flatMap(fn($txn) => $txn->details->map(fn($d) => [
-                'ref_no'        => $txn->ref_no,
-                'or_number'     => $txn->or_number,
-                'service_id'    => $d->service_id,
-                'service'       => $d->service->name ?? 'Unknown Service',
-                'account_name'  => $d->account->name ?? 'Unassigned',
-                'amount'        => $d->amount,
-                'total'         => $d->total,
-                'quantity'      => $d->quantity,
-                'exchange_rate' => $d->exchange_rate,
-                'currency'      => $d->currency,
-            ]))
-            ->groupBy('service_id');
     @endphp
 
-    @foreach ($details as $serviceId => $items)
+    @foreach ($transactions->reject(fn($t) => $t->is_voided ?? false) as $txn)
         @php
-            $serviceName = $items->first()['service'];
-            $refNo = $items->first()['ref_no'];
-            $orNo = $items->first()['or_number'];
-            $qty = $items->sum('quantity');
-
-            // initialize all accounts to 0
-            $rowAccounts = array_fill_keys($allAccounts->toArray(), 0);
-
-            foreach ($items as $d) {
-                // convert USD to PHP
-                $converted = $d['currency'] === 'USD' && $d['exchange_rate']
-                    ? $d['total'] * $d['exchange_rate']
-                    : $d['total'];
-
-                $accName = $d['account_name'] ?? 'Unassigned';
-                if (!array_key_exists($accName, $rowAccounts)) {
-                    $rowAccounts[$accName] = 0; // dynamically add unseen account
-                    $accountTotals[$accName] = $accountTotals[$accName] ?? 0;
-                }
-
-                $rowAccounts[$accName] += $converted;
-            }
-
-            $rowTotal = array_sum($rowAccounts);
-            $grandTotal += $rowTotal;
-            $txnCountTotal += $qty;
-
-            foreach ($rowAccounts as $acc => $val) {
-                $accountTotals[$acc] += $val;
-            }
+            $services = $txn->details->groupBy('service_id');
+            $txnTotal = 0;
+            $txnWorkUnits = 0;
         @endphp
 
-        <tr>
-            <td>{{ $rowIndex++ }}</td>
-            <td>{{ $refNo }}</td>
-            <td>{{ $orNo }}</td>
-            <td>{{ $serviceName }}</td>
-            <td class="center">{{ $qty }}</td>
+        @foreach ($services as $serviceId => $details)
+            @php
+                $serviceName = $details->first()->service->name ?? 'Unknown Service';
+                $qty = $details->sum('quantity');
+                $txnWorkUnits += $qty;
 
-            @foreach ($allAccounts as $acc)
-                <td class="right">
-                    {{ $rowAccounts[$acc] > 0 ? number_format($rowAccounts[$acc], 2) : '' }}
-                </td>
-            @endforeach
+                // initialize per-account amounts for this service row
+                $rowAccounts = array_fill_keys($allAccounts->toArray(), 0);
 
-            <td class="right font-bold">{{ number_format($rowTotal, 2) }}</td>
-        </tr>
+                foreach ($details as $d) {
+                    $accName = optional($d->account)->name
+                        ?? optional(optional($d->feeComponent)->account)->name
+                        ?? 'Unassigned';
+
+                    // Convert USD to PHP
+                    $converted = ($d->currency === 'USD' && $d->exchange_rate)
+                        ? $d->total * (float)$d->exchange_rate
+                        : $d->total;
+
+                    if (!array_key_exists($accName, $rowAccounts)) {
+                        $rowAccounts[$accName] = 0;
+                        $accountTotals[$accName] = $accountTotals[$accName] ?? 0;
+                    }
+
+                    $rowAccounts[$accName] += $converted;
+                }
+
+                $rowTotal = array_sum($rowAccounts);
+                $txnTotal += $rowTotal;
+                $grandTotal += $rowTotal;
+
+                // update overall account totals
+                foreach ($rowAccounts as $acc => $val) {
+                    $accountTotals[$acc] += $val;
+                }
+            @endphp
+
+            <tr>
+                <td>{{ $rowIndex++ }}</td>
+                <td>{{ $txn->ref_no }}</td>
+                <td>{{ $txn->or_number }}</td>
+                <td>{{ $serviceName }}</td>
+                <td class="center">{{ $qty }}</td>
+
+                @foreach ($allAccounts as $acc)
+                    <td class="right">
+                        {{ ($rowAccounts[$acc] ?? 0) > 0 ? number_format($rowAccounts[$acc], 2) : '' }}
+                    </td>
+                @endforeach
+
+                <td class="right font-bold">{{ number_format($rowTotal, 2) }}</td>
+            </tr>
+        @endforeach
+
+        @php
+            $txnCountTotal += $txnWorkUnits;
+        @endphp
     @endforeach
 
     {{-- TOTAL ROW --}}
     <tr>
-        <td colspan="4" class="right font-bold">TOTAL</td>
+        <td colspan="4" class="right font-bold">GRAND TOTAL</td>
         <td class="center font-bold">{{ $txnCountTotal }}</td>
         @foreach ($allAccounts as $acc)
-            <td class="right font-bold">{{ number_format($accountTotals[$acc], 2) }}</td>
+            <td class="right font-bold">{{ number_format($accountTotals[$acc] ?? 0, 2) }}</td>
         @endforeach
         <td class="right font-bold">{{ number_format($grandTotal, 2) }}</td>
     </tr>
@@ -515,6 +582,7 @@
 @php
     $voidedTransactions = \App\Models\Transaction::with(['details', 'voidedBy'])
         ->whereDate('voided_at', $date)
+        ->where('user_id', auth()->id())
         ->where('is_voided', true)
         ->orderBy('voided_at', 'asc')
         ->get();

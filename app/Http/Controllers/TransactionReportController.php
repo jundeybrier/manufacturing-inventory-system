@@ -23,6 +23,7 @@ class TransactionReportController extends Controller
         ])
             ->whereDate('created_at', $date)
             ->whereNull('voided_at')
+            ->where('user_id', auth()->id())
             ->get();
         $feeComponents = \App\Models\FeeComponent::with('service')
             ->get();
@@ -121,6 +122,7 @@ class TransactionReportController extends Controller
                 $details = TransactionDetail::where('fee_component_id', $fc->id)
                     ->whereHas('transaction', fn ($q) =>
                     $q->whereDate('created_at', $date)
+                        ->where('user_id', auth()->id())
                         ->whereNull('voided_at')
                     )->get();
 

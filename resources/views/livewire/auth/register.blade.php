@@ -31,6 +31,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
             // 🔹 Add site code if needed
             $validated['site_code'] = config('app.site_code');
+            $validated['office_id'] = config('app.site_code');
             $validated['password'] = Hash::make($validated['password']);
 
             // 🔹 If in "client" mode — register via remote server
