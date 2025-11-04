@@ -23,6 +23,12 @@ class SyncStatus extends Component
     public function syncNow()
     {
         $this->reset('status');
+        $this->status = [
+            'last_sync' => '',
+            'queued_records' => '',
+            'failed_records' => '',
+            'server_connection' => 'Syncing..',
+        ];
         $this->isSyncing = true;
 
         try {
@@ -38,7 +44,7 @@ class SyncStatus extends Component
                 $http = $http->withoutVerifying();
             }
 
-            $response = $http->timeout(60)->post($url, [
+            $response = $http->timeout(10)->post($url, [
                 'site_code' => config('app.site_code', 'default'),
             ]);
 
