@@ -28,25 +28,30 @@ class SyncStatus extends Component
         $this->isSyncing = true;
 
         try {
-            // Call the local API (self)
-            $response = Http::timeout(30)->post(url('/api/sync'), [
-                'site_code' => config('app.site_code', 'default'),
-            ]);
+            // 🔹 Build full API URL from .env
+            $baseUrl = rtrim(config('services.server.url'), '/');
+            $url = $baseUrl . '/api/sync';
+
+            // 🔹 Perform the HTTP call using env settings
+            $response = Http::withToken(config('services.server.token'))
+                ->timeout(5)
+                ->post($url, [
+                    'site_code' => config('app.site_code', 'default'),
+                ]);
 
             if ($response->successful()) {
                 $data = $response->json();
 
-                // Step 1: extract records
                 $offices = $data['records'] ?? [];
 
                 DB::transaction(function () use ($offices) {
                     foreach ($offices as $office) {
-                        // Step 2: update or create (avoids duplicates)
                         Office::updateOrCreate(
-                            ['code' => $office['code']],
+                            ['uuid' => $office['uuid']],
                             [
                                 'name' => $office['name'],
-                                'address' => $office['address'] ?? null,
+                                'location' => $office['location'] ?? null,
+                                'created_at' => $office['created_at'] ?? now(),
                                 'updated_at' => $office['updated_at'] ?? now(),
                             ]
                         );
@@ -63,6 +68,7 @@ class SyncStatus extends Component
                     'body' => $response->body(),
                 ];
             }
+
         } catch (\Throwable $e) {
             $this->status = [
                 'error' => $e->getMessage(),
@@ -75,6 +81,6 @@ class SyncStatus extends Component
     public function render()
     {
         return view('livewire.sync-status')
-            ->layout('components.layouts.standalone');
+            ->layout('components.layouts.auth.simple');
     }
 }
