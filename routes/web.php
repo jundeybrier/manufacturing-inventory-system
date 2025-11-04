@@ -49,5 +49,6 @@ Route::post('/registration', [RegisterUserController::class, 'store'])->name('re
 Route::get('/client-register', [RegisterUserController::class, 'show'])->name('client.register');
 Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
 
+Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
 
 require __DIR__.'/auth.php';

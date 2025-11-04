@@ -22,3 +22,9 @@ yarn-error.log
 /.vscode
 /.zed
 cashiering-client.tar
+
+
+# Ignore tarball builds
+*.tar
+*.tar.gz
+*.tgz
