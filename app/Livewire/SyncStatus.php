@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Models\Office;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
 
@@ -23,38 +25,37 @@ class SyncStatus extends Component
     public function syncNow()
     {
         $this->reset('status');
-        $this->status = [
-            'last_sync' => '',
-            'queued_records' => '',
-            'failed_records' => '',
-            'server_connection' => 'Syncing..',
-        ];
         $this->isSyncing = true;
 
         try {
-            $baseUrl = rtrim(config('services.server.url'), '/');
-            $endpoint = '/api/sync';
-            $url = $baseUrl . $endpoint;
-
-            $token = config('services.server.token');
-            $verifySsl = config('services.server.verify_ssl', true);
-
-            $http = Http::withToken($token);
-            if (! $verifySsl) {
-                $http = $http->withoutVerifying();
-            }
-
-            $response = $http->timeout(10)->post($url, [
+            // Call the local API (self)
+            $response = Http::timeout(30)->post(url('/api/sync'), [
                 'site_code' => config('app.site_code', 'default'),
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
+
+                // Step 1: extract records
+                $offices = $data['records'] ?? [];
+
+                DB::transaction(function () use ($offices) {
+                    foreach ($offices as $office) {
+                        // Step 2: update or create (avoids duplicates)
+                        Office::updateOrCreate(
+                            ['code' => $office['code']],
+                            [
+                                'name' => $office['name'],
+                                'address' => $office['address'] ?? null,
+                                'updated_at' => $office['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                });
+
                 $this->status = [
-                    'last_sync' => now()->toDateTimeString(),
-                    'queued_records' => $data['queued_records'] ?? 0,
-                    'failed_records' => $data['failed_records'] ?? 0,
-                    'message' => 'Sync completed successfully!',
+                    'message' => "Synced {$data['count']} offices successfully.",
+                    'timestamp' => now()->toDateTimeString(),
                 ];
             } else {
                 $this->status = [

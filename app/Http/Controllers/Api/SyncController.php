@@ -1,26 +1,37 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
+use Symfony\Component\HttpFoundation\Response;
 use App\Http\Controllers\Controller;
+use App\Models\Office;
 use Illuminate\Http\Request;
 
 class SyncController extends Controller
 {
     public function sync(Request $request)
     {
-        // Optional: Validate or use request data
-        $site = $request->input('site_code', 'unknown');
+        // Step 1: Get all offices from central DB
+        $expectedToken = config('services.server.token');
+        $providedToken = $request->bearerToken();
 
-        // Simulate a sync result
-        $result = [
-            'site_code' => $site,
-            'queued_records' => rand(0, 5),
-            'failed_records' => rand(0, 2),
+        if (! $expectedToken || $providedToken !== $expectedToken) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: Invalid or missing token.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Optional: Validate or use request data
+        $offices = Office::all(['uuid','name', 'location', 'created_at', 'updated_at']);
+
+        // Step 2: Package response
+        return response()->json([
+            'records' => $offices,
+            'count' => $offices->count(),
             'status' => 'ok',
-            'message' => 'Data synchronized successfully.',
+            'message' => 'Offices synchronized successfully.',
             'timestamp' => now()->toDateTimeString(),
-        ];
+        ]);
 
         return response()->json($result);
     }
