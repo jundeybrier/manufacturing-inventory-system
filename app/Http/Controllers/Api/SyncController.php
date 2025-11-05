@@ -1,16 +1,18 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
 use Symfony\Component\HttpFoundation\Response;
 use App\Http\Controllers\Controller;
 use App\Models\Office;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class SyncController extends Controller
 {
     public function sync(Request $request)
     {
-        // Step 1: Get all offices from central DB
+        // Step 1: Token validation
         $expectedToken = config('services.server.token');
         $providedToken = $request->bearerToken();
 
@@ -21,18 +23,46 @@ class SyncController extends Controller
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Optional: Validate or use request data
-        $offices = Office::all(['uuid','name', 'location', 'created_at', 'updated_at']);
+        // Step 2: Expect UUID from client
+        $uuid = $request->input('uuid');
 
-        // Step 2: Package response
+        if (! $uuid) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Missing required parameter: uuid.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Step 3: Find the office by UUID
+        $office = Office::where('uuid', $uuid)->first();
+
+        if (! $office) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Office not found for provided UUID.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        // Step 4: Get all offices (for reference) and users under this office
+        $offices = Office::all(['uuid', 'name', 'location', 'created_at', 'updated_at']);
+
+        $users = User::where('office_id', $office->id)
+            ->select('uuid', 'name', 'email', 'office_id', 'created_at', 'updated_at')
+            ->get();
+
+        // Step 5: Package response
         return response()->json([
-            'records' => $offices,
-            'count' => $offices->count(),
             'status' => 'ok',
-            'message' => 'Offices synchronized successfully.',
+            'message' => 'Sync completed successfully.',
             'timestamp' => now()->toDateTimeString(),
+            'records' => [
+                'offices' => $offices,
+                'users' => $users,
+            ],
+            'counts' => [
+                'offices' => $offices->count(),
+                'users' => $users->count(),
+            ],
         ]);
-
-        return response()->json($result);
     }
 }
