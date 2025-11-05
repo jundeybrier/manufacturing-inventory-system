@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Office;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
@@ -10,69 +11,99 @@ use Illuminate\Support\Facades\Http;
 class SyncStatus extends Component
 {
     public $status = [];
+    public $log = [];
     public $isSyncing = false;
 
     public function mount()
     {
+        if (config('app.mode') !== 'client') {
+            abort(403, 'This feature is only available in Client Mode.');
+        }
+
         $this->status = [
             'last_sync' => 'Never',
-            'queued_records' => 0,
-            'failed_records' => 0,
+            'office_count' => Office::count(),
+            'user_count' => User::count(),
             'server_connection' => 'Idle',
         ];
     }
 
+    private function logMessage($message)
+    {
+        $this->log[] = now()->format('H:i:s') . ' — ' . $message;
+        $this->dispatch('$refresh'); // Force UI update immediately
+    }
+
     public function syncNow()
     {
-        $this->reset('status');
         $this->isSyncing = true;
+        $this->log = [];
 
         try {
-            // 🔹 Build full API URL from .env
-            $baseUrl = rtrim(config('services.server.url'), '/');
-            $url = $baseUrl . '/api/sync';
+            $this->logMessage('Starting sync process…');
 
-            // 🔹 Perform the HTTP call using env settings
+            $url = rtrim(config('services.server.url'), '/') . '/api/sync';
+            $this->logMessage("Connecting to server: {$url}");
+
             $response = Http::withToken(config('services.server.token'))
-                ->timeout(5)
+                ->timeout(8)
                 ->post($url, [
-                    'site_code' => config('app.site_code', 'default'),
+                    'uuid' => config('app.site_code'),
                 ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                $offices = $data['records'] ?? [];
-
-                DB::transaction(function () use ($offices) {
-                    foreach ($offices as $office) {
-                        Office::updateOrCreate(
-                            ['uuid' => $office['uuid']],
-                            [
-                                'name' => $office['name'],
-                                'location' => $office['location'] ?? null,
-                                'created_at' => $office['created_at'] ?? now(),
-                                'updated_at' => $office['updated_at'] ?? now(),
-                            ]
-                        );
-                    }
-                });
-
-                $this->status = [
-                    'message' => "Synced {$data['count']} offices successfully.",
-                    'timestamp' => now()->toDateTimeString(),
-                ];
-            } else {
-                $this->status = [
-                    'error' => 'Server returned ' . $response->status(),
-                    'body' => $response->body(),
-                ];
+            if (! $response->successful()) {
+                $this->logMessage("Server returned error HTTP {$response->status()}.");
+                $this->status['server_connection'] = 'Failed';
+                return;
             }
 
-        } catch (\Throwable $e) {
+            $this->logMessage('Server connection OK.');
+            $payload = $response->json();
+
+            $offices = $payload['records']['offices'] ?? [];
+            $users   = $payload['records']['users'] ?? [];
+
+            DB::transaction(function () use ($offices, $users) {
+
+                $this->logMessage("Syncing " . count($offices) . " office(s)…");
+                foreach ($offices as $o) {
+                    Office::updateOrCreate(['uuid' => $o['uuid']], [
+                        'name' => $o['name'],
+                        'location' => $o['location'] ?? null,
+                        'created_at' => $o['created_at'] ?? now(),
+                        'updated_at' => $o['updated_at'] ?? now(),
+                    ]);
+
+                    $this->logMessage("→ Office: {$o['name']} synced.");
+                }
+
+                $this->logMessage("Syncing " . count($users) . " user(s)…");
+                foreach ($users as $u) {
+                    User::updateOrCreate(['uuid' => $u['uuid']], [
+                        'name' => $u['name'],
+                        'email' => $u['email'],
+                        'office_id' => $u['office_id'],
+                        'created_at' => $u['created_at'] ?? now(),
+                        'updated_at' => $u['updated_at'] ?? now(),
+                    ]);
+
+                    $this->logMessage("→ User: {$u['name']} synced.");
+                }
+            });
+
+            $this->logMessage('Sync completed successfully.');
+
             $this->status = [
-                'error' => $e->getMessage(),
+                'server_connection' => 'OK',
+                'last_sync' => now()->toDateTimeString(),
+                'office_count' => Office::count(),
+                'user_count' => User::count(),
+                'message' => "Sync completed successfully.",
             ];
+
+        } catch (\Throwable $e) {
+            $this->logMessage("ERROR: " . $e->getMessage());
+            $this->status['server_connection'] = 'Error';
         } finally {
             $this->isSyncing = false;
         }

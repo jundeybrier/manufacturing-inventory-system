@@ -1,25 +1,33 @@
-<div class="p-6 space-y-6 text-center">
-    {{-- Status Box --}}
+<div class="p-6 space-y-6">
+
+    {{-- Live Log Console --}}
     <div
-        class="max-h-96 overflow-auto text-left bg-gray-100 dark:bg-gray-900 rounded-lg p-4 text-sm
-               text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 shadow-inner">
-        <pre class="whitespace-pre-wrap break-all">
-{{ json_encode($status, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}
-        </pre>
+        x-data="{ scroll() { $refs.box.scrollTop = $refs.box.scrollHeight } }"
+        x-init="$watch('log', () => scroll())"
+        class="bg-gray-900 text-green-400 font-mono text-xs p-4 rounded border border-gray-700 shadow-inner h-64 overflow-y-auto"
+        x-ref="box"
+    >
+        @forelse($log as $line)
+            <div>{{ $line }}</div>
+        @empty
+            <div class="text-gray-500 italic">No recent sync actions yet…</div>
+        @endforelse
     </div>
 
     {{-- Buttons --}}
-    <div class="flex items-center justify-center gap-4">
+    <div class="flex items-center justify-center gap-4 mt-6">
+
         {{-- Sync Button --}}
         <flux:button
             variant="primary"
             wire:click="syncNow"
+            :disabled="$isSyncing"
             spinner
         >
             <i class="fas fa-cloud-upload-alt mr-1"></i> Sync Now
         </flux:button>
 
-        {{-- Login Redirect Button --}}
+        {{-- Login Redirect --}}
         <flux:button
             variant="outline"
             href="{{ route('login') }}"
