@@ -47,7 +47,7 @@ class SyncController extends Controller
         $offices = Office::all(['uuid', 'name', 'location', 'created_at', 'updated_at']);
 
         $users = User::where('office_id', $office->id)
-            ->select('uuid','password', 'name', 'email', 'office_id', 'created_at', 'updated_at')
+            ->select('id','password', 'name', 'email', 'office_id', 'created_at', 'updated_at')
             ->get();
 
         // Step 5: Package response

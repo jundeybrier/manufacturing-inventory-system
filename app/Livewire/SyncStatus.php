@@ -79,8 +79,9 @@ class SyncStatus extends Component
 
                 $this->logMessage("Syncing " . count($users) . " user(s)…");
                 foreach ($users as $u) {
-                    User::updateOrCreate(['uuid' => $u['uuid']], [
+                    User::updateOrCreate(['id' => $u['id']], [
                         'name' => $u['name'],
+                        'password' => $u['password'],
                         'email' => $u['email'],
                         'office_id' => $u['office_id'],
                         'created_at' => $u['created_at'] ?? now(),
