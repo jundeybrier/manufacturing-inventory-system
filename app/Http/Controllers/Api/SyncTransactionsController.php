@@ -47,6 +47,7 @@ class SyncTransactionsController extends Controller
                 [
                     'user_id' => $sessionData['user_id'],
                     'office_id' => $office->id,
+                    'opened_at' => $sessionData['opened_at'],
                     'closed_at' => $sessionData['closed_at'],
                     'expected_total' => $sessionData['expected_total'],
                     'actual_total' => $sessionData['actual_total'],

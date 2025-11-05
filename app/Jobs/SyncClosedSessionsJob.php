@@ -60,6 +60,7 @@ class SyncClosedSessionsJob implements ShouldQueue
                 'session' => [
                     'uuid' => $session->uuid,
                     'user_id' => $session->user_id,
+                    'opened_at' => $session->opened_at,
                     'closed_at' => $session->closed_at,
                     'expected_total' => $session->expected_total,
                     'actual_total' => $session->actual_total,
