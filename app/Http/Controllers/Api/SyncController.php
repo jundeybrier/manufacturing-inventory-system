@@ -44,7 +44,7 @@ class SyncController extends Controller
         }
 
         // Step 4: Get all offices (for reference) and users under this office
-        $offices = Office::all(['uuid', 'name', 'location', 'created_at', 'updated_at']);
+        $offices = Office::all(['id','uuid', 'name', 'location', 'created_at', 'updated_at']);
 
         $users = User::where('office_id', $office->id)
             ->select('id','password', 'name', 'email', 'office_id', 'created_at', 'updated_at')

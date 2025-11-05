@@ -67,7 +67,7 @@ class SyncStatus extends Component
 
                 $this->logMessage("Syncing " . count($offices) . " office(s)…");
                 foreach ($offices as $o) {
-                    Office::updateOrCreate(['uuid' => $o['uuid']], [
+                    Office::updateOrCreate(['id' => $o['id'],'uuid' => $o['uuid']], [
                         'name' => $o['name'],
                         'location' => $o['location'] ?? null,
                         'created_at' => $o['created_at'] ?? now(),
