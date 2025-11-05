@@ -48,7 +48,7 @@ class CashierSession extends Model
     // If you have CashCollection/SessionDenomination, add:
     public function denominations()
     {
-        return $this->hasMany(SessionDenomination::class);
+        return $this->hasMany(\App\Models\SessionDenomination::class, 'session_id', 'id');
     }
 
     public function transactions()

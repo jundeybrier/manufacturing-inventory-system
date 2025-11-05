@@ -9,6 +9,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('sync:activated-users')->everyFiveMinutes();
+        $schedule->job(new \App\Jobs\SyncClosedSessionsJob)->everyMinute();
     }
 
     protected function commands(): void

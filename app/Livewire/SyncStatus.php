@@ -108,7 +108,7 @@ class SyncStatus extends Component
                 // --- Accounts ---
                 $this->logMessage("Syncing " . count($accounts) . " account(s)…");
                 foreach ($accounts as $a) {
-                    \App\Models\Account::updateOrCreate(['uuid' => $a['uuid']], [
+                    \App\Models\Account::updateOrCreate(['id' => $u['id'],'uuid' => $a['uuid']], [
                         'office_id'  => $a['office_id'],
                         'name'       => $a['name'],
                         'code'       => $a['code'],
@@ -123,7 +123,7 @@ class SyncStatus extends Component
                 // --- Products (global) ---
                 $this->logMessage("Syncing " . count($products) . " product(s)…");
                 foreach ($products as $p) {
-                    \App\Models\Product::updateOrCreate(['uuid' => $p['uuid']], [
+                    \App\Models\Product::updateOrCreate(['id' => $u['id'],'uuid' => $p['uuid']], [
                         'name'       => $p['name'],
                         'description'=> $p['description'],
                         'is_active'  => $p['is_active'],
@@ -137,7 +137,7 @@ class SyncStatus extends Component
                 // --- Services (office scoped) ---
                 $this->logMessage("Syncing " . count($services) . " service(s)…");
                 foreach ($services as $s) {
-                    \App\Models\Service::updateOrCreate(['uuid' => $s['uuid']], [
+                    \App\Models\Service::updateOrCreate(['id' => $u['id'],'uuid' => $s['uuid']], [
                         'office_id'  => $s['office_id'],
                         'name'       => $s['name'],
                         'type'       => $s['type'],
@@ -152,7 +152,7 @@ class SyncStatus extends Component
                 // --- Fee Components (depends on accounts + services) ---
                 $this->logMessage("Syncing " . count($feeComponents) . " fee component(s)…");
                 foreach ($feeComponents as $fc) {
-                    \App\Models\FeeComponent::updateOrCreate(['uuid' => $fc['uuid']], [
+                    \App\Models\FeeComponent::updateOrCreate(['id' => $u['id'],'uuid' => $fc['uuid']], [
                         'service_id' => $fc['service_id'],
                         'account_id' => $fc['account_id'],
                         'office_id'  => $fc['office_id'],
@@ -170,7 +170,7 @@ class SyncStatus extends Component
                 // --- Product ↔ Service Pivot ---
                 $this->logMessage("Syncing " . count($productServices) . " product-service relation(s)…");
                 foreach ($productServices as $ps) {
-                    \App\Models\ProductService::updateOrCreate(['uuid' => $ps['uuid']], [
+                    \App\Models\ProductService::updateOrCreate(['id' => $u['id'],'uuid' => $ps['uuid']], [
                         'product_id' => $ps['product_id'],
                         'service_id' => $ps['service_id'],
                         'created_at' => $ps['created_at'] ?? now(),
