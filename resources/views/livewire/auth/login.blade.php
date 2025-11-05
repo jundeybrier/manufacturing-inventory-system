@@ -124,9 +124,11 @@ new #[Layout('components.layouts.auth')] class extends Component {
             <flux:link :href="route('registration')" wire:navigate>{{ __('Sign up') }}</flux:link>
         </div>
     @endif
-    @if (Route::has('sync.status'))
+    @if (config('app.mode') === 'client' && Route::has('sync.status'))
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
-            <flux:link :href="route('sync.status')" wire:navigate>{{ __('Sync Online') }}</flux:link>
+            <flux:link :href="route('sync.status')" wire:navigate>
+                {{ __('Sync Online') }}
+            </flux:link>
         </div>
     @endif
 </div>

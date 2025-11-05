@@ -51,6 +51,8 @@ Route::middleware(['site_permission'])->group(function () {
     Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
 });
 
-Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
+if (config('app.mode') === 'client') {
+    Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
+}
 
 require __DIR__.'/auth.php';
