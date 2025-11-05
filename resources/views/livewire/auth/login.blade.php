@@ -77,6 +77,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
     <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
 
     <!-- Session Status -->
+    <span class="text-emerald-600 dark:text-emerald-400 text-center">
+        {{ current_office_name() }}
+    </span>
+
     <x-auth-session-status class="text-center" :status="session('status')" />
 
     <form wire:submit="login" class="flex flex-col gap-6">
@@ -118,12 +122,6 @@ new #[Layout('components.layouts.auth')] class extends Component {
         </div>
     </form>
 
-    @if (Route::has('registration'))
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
-            {{ __('Don\'t have an account?') }}
-            <flux:link :href="route('registration')" wire:navigate>{{ __('Sign up') }}</flux:link>
-        </div>
-    @endif
     @if (config('app.mode') === 'client' && Route::has('sync.status'))
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <flux:link :href="route('sync.status')" wire:navigate>

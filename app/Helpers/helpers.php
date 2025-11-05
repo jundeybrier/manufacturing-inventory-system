@@ -19,4 +19,19 @@ if (!function_exists('app_is_client')) {
         return config('mode.type') === 'client';
     }
 }
+if (! function_exists('current_office_name')) {
+    /**
+     * Returns the Office Name matching the APP_SITE_CODE (or UUID)
+     */
+    function current_office_name()
+    {
+        $code = config('app.site_code') ?? config('app.office_uuid');
 
+        if (! $code) {
+            return null;
+        }
+
+        return \App\Models\Office::where('uuid', $code)
+            ->value('name') ?? 'Unknown Office';
+    }
+}

@@ -45,10 +45,10 @@ Route::middleware(['auth', 'role:admin','site_permission'])->group(function () {
 });
 
 Route::middleware(['site_permission'])->group(function () {
-    Route::get('/registration', [RegisterUserController::class, 'show'])->name('registration');
-    Route::post('/registration', [RegisterUserController::class, 'store'])->name('registration.store');
-    Route::get('/client-register', [RegisterUserController::class, 'show'])->name('client.register');
-    Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
+//    Route::get('/registration', [RegisterUserController::class, 'show'])->name('registration');
+//    Route::post('/registration', [RegisterUserController::class, 'store'])->name('registration.store');
+//    Route::get('/client-register', [RegisterUserController::class, 'show'])->name('client.register');
+//    Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
 });
 
 if (config('app.mode') === 'client') {

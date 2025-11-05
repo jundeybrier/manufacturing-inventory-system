@@ -10,7 +10,7 @@ Route::middleware(['guest','site_permission'])->group(function () {
 
 //    Volt::route('register', 'auth.register')
 //        ->name('register');
-    Route::redirect('/register', '/registration');
+//    Route::redirect('/register', '/registration');
 
     Volt::route('forgot-password', 'auth.forgot-password')
         ->name('password.request');

@@ -10,7 +10,7 @@ class Office extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['uuid', 'name', 'location'];
+    protected $fillable = ['id','uuid', 'name', 'location'];
 
     protected static function boot()
     {
