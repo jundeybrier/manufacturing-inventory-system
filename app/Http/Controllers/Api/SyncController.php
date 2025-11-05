@@ -57,23 +57,23 @@ class SyncController extends Controller
             ->get();
 
         // Step 6: Accounts (office-scoped)
-        $accounts = Account::select('uuid','office_id','name','code','description','is_active','created_at','updated_at')
+        $accounts = Account::select('id','uuid','office_id','name','code','description','is_active','created_at','updated_at')
             ->get();
 
         // Step 7: Products (global catalog)
-        $products = Product::select('uuid','name','description','is_active','created_at','updated_at','deleted_at')
+        $products = Product::select('id','uuid','name','description','is_active','created_at','updated_at','deleted_at')
             ->get();
 
         // Step 8: Services (office-scoped)
-        $services = Service::select('uuid','office_id','name','type','description','is_active','created_at','updated_at')
+        $services = Service::select('id','uuid','office_id','name','type','description','is_active','created_at','updated_at')
             ->get();
 
         // Step 9: Fee Components (depends on accounts + services)
-        $feeComponents = FeeComponent::select('uuid','service_id','account_id','office_id','name','base_amount','is_variable','currency','is_active','created_at','updated_at')
+        $feeComponents = FeeComponent::select('id','uuid','service_id','account_id','office_id','name','base_amount','is_variable','currency','is_active','created_at','updated_at')
             ->get();
 
         // Step 10: Product-Service mapping (office services + global products)
-        $productServices = ProductService::select('uuid','product_id','service_id','created_at','updated_at','deleted_at')
+        $productServices = ProductService::select('id','uuid','product_id','service_id','created_at','updated_at','deleted_at')
             ->whereIn('service_id', $services->pluck('id'))
             ->get();
 
