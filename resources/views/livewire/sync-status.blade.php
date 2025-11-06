@@ -2,7 +2,10 @@
 
     {{-- Live Log Console --}}
     <div
-        x-data="{ scroll() { $refs.box.scrollTop = $refs.box.scrollHeight } }"
+        x-data="{
+            log: @entangle('log').live,
+            scroll() { $refs.box.scrollTop = $refs.box.scrollHeight }
+        }"
         x-init="$watch('log', () => scroll())"
         class="bg-gray-900 text-green-400 font-mono text-xs p-4 rounded border border-gray-700 shadow-inner h-64 overflow-y-auto"
         x-ref="box"
@@ -24,7 +27,7 @@
             :disabled="$isSyncing"
             spinner
         >
-            <i class="fas fa-cloud-upload-alt mr-1"></i> Sync Now
+            <i class="fas fa-cloud-upload-alt mr-1"></i> Sync Now 1
         </flux:button>
 
         {{-- Login Redirect --}}
