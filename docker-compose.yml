@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
     nginx:
         image: nginx:1.27-alpine
@@ -7,42 +9,52 @@ services:
             - "8088:80"
         volumes:
             - app_code:/var/www/html:ro
-            - storage_data:/var/www/html/storage
             - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - storage_data:/var/www/html/storage   # persistent runtime data only
         restart: always
+        networks:
+            - cashiering-net
 
     php:
-        image: dfa-cashiering-client-php:latest
+        image: ${REGISTRY_HOST}/dfa-cashiering-client-php:latest
         container_name: cashiering-php
         depends_on: [mysql]
+        environment:
+            APP_ENV: ${APP_ENV}
+            APP_DEBUG: ${APP_DEBUG}
+            APP_KEY: ${APP_KEY}
+            APP_MODE: ${APP_MODE}
+            SERVER_API_URL: ${SERVER_API_URL}
+
+            DB_CONNECTION: ${DB_CONNECTION}
+            DB_HOST: ${DB_HOST}
+            DB_PORT: ${DB_PORT}
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
         volumes:
             - app_code:/var/www/html
-            - storage_data:/var/www/html/storage
-        environment:
-            APP_ENV: production
-            APP_DEBUG: false
-            APP_KEY: base64:ReplaceWithYourAppKey
-            DB_CONNECTION: mysql
-            DB_HOST: mysql
-            DB_PORT: 3306
-            DB_DATABASE: cashiering
-            DB_USERNAME: cashier
-            DB_PASSWORD: secret123
-            SERVER_API_URL: 10.253.85.23
-            APP_MODE: server
+            - storage_data:/var/www/html/storage   # Only storage writes persist
         restart: always
+        networks:
+            - cashiering-net
 
     mysql:
         image: mysql:8.0
         container_name: cashiering-mysql
         restart: always
         environment:
-            MYSQL_ROOT_PASSWORD: rootpassword
-            MYSQL_DATABASE: cashiering
-            MYSQL_USER: cashier
-            MYSQL_PASSWORD: secret123
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
         volumes:
             - mysql_data:/var/lib/mysql
+        networks:
+            - cashiering-net
+
+networks:
+    cashiering-net:
 
 volumes:
     mysql_data:

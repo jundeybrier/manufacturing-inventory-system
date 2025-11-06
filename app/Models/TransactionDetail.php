@@ -13,6 +13,7 @@ class TransactionDetail extends Model
         'transaction_id', 'name', 'service_id', 'fee_component_id',
         'account_id', 'quantity', 'amount', 'total', 'currency', 'conversion_rate',
         'date', 'datetime_created', 'created_by', 'user_id','exchange_rate',
+        'synced_at',
     ];
 
     protected static function boot()

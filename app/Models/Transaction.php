@@ -31,6 +31,7 @@ class Transaction extends Model
         'void_reason',
         'voided_by',
         'voided_at',
+        'synced_at',
     ];
     protected static function boot()
     {

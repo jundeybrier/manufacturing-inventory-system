@@ -14,6 +14,7 @@
         <table class="min-w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">
             <thead>
             <tr class="text-left">
+                <th class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">UUID</th>
                 <th class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">Name</th>
                 <th class="p-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">Location</th>
                 <th class="p-2 border border-gray-300 dark:border-gray-600 text-center w-32 text-gray-700 dark:text-gray-300">Actions</th>
@@ -22,6 +23,9 @@
             <tbody>
             @forelse($offices as $office)
                 <tr>
+                    <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                        {{ $office->uuid }}
+                    </td>
                     <td class="p-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                         {{ $office->name }}
                     </td>
