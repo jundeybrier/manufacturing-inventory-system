@@ -58,7 +58,7 @@ class Index extends BaseComponent
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $this->userId,
             'password' => $this->userId ? 'nullable|min:6' : 'required|min:6',
-            'role' => 'required|string',
+            'role' => 'nullable|string',
             'office_id' => 'required|exists:offices,id',
         ]);
 
