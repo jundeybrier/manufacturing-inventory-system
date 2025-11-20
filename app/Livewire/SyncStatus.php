@@ -73,6 +73,7 @@ class SyncStatus extends Component
             $permissions = $payload['records']['permissions'] ?? [];
             $roles = $payload['records']['roles'] ?? [];
             $userRoles = $payload['records']['user_roles'] ?? [];
+            $rolePermissions = $payload['records']['role_permissions'] ?? [];
 
             DB::transaction(function () use (
                 $offices,
@@ -84,7 +85,8 @@ class SyncStatus extends Component
                 $productServices,
                 $permissions,
                 $roles,
-                $userRoles
+                $userRoles,
+                $rolePermissions
             ) {
 
                 // --- Offices ---
@@ -146,6 +148,16 @@ class SyncStatus extends Component
 
                     $localUser->syncRoles($ur['roles']);
                     $this->logMessage("→ Roles updated for: {$localUser->name}");
+                }
+
+                foreach ($rolePermissions as $rp) {
+                    $role = Role::find($rp['role_id']);
+                    $permission = Permission::find($rp['permission_id']);
+
+                    if ($role && $permission) {
+                        $role->givePermissionTo($permission->name);
+                        $this->logMessage("→ {$role->name} granted {$permission->name}");
+                    }
                 }
 
 

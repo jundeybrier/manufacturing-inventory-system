@@ -50,7 +50,7 @@ class AdminSeeder extends Seeder
             ['email' => 'jundeybrier@gmail.com'],
             [
                 'name'      => 'Super Admin',
-                'password'  => Hash::make(''), // Update manually later
+                'password'  => Hash::make('qweasdzxc'), // Update manually later
                 'office_id' => $officeId,
             ]
         );
@@ -60,7 +60,7 @@ class AdminSeeder extends Seeder
             ['email' => 'oca.pits@dfa.gov.ph'],
             [
                 'name'      => 'Super Admin - PITS',
-                'password'  => Hash::make(''),
+                'password'  => Hash::make('12345678'),
                 'office_id' => $officeId,
             ]
         );
