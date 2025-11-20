@@ -11,19 +11,32 @@ class TransactionReportController extends Controller
 {
     public function daily(Request $request)
     {
-        $date = request('date') ? Carbon::parse(request('date')) : today();
-        $userId = request('user') ?? auth()->id();
+        $date = $request->filled('date')
+            ? Carbon::parse($request->input('date'))
+            : today();
 
-// Always enforce office scope — even for admins
-        $user = \App\Models\User::findOrFail($userId);
+        $requestedUserId = $request->input('user', auth()->id());
 
-        if (!auth()->user()->can('view office reports') && auth()->id() !== $userId) {
-            abort(403, 'Unauthorized report access');
+        $requestedUser = \App\Models\User::findOrFail($requestedUserId);
+        $currentUser = auth()->user();
+
+        // Supervisors can only view reports of users within same office
+        if ($currentUser->can('view office reports')) {
+            if ($currentUser->office_id !== $requestedUser->office_id) {
+                abort(403, 'Unauthorized: Office mismatch.');
+            }
+        }
+        // Tellers can only view themselves
+        else {
+            if ($currentUser->id !== $requestedUserId) {
+                abort(403, 'Unauthorized: Teller cannot view others.');
+            }
         }
 
-        $report = app(DailyReportService::class)->generate($date, $userId);
+        $report = app(DailyReportService::class)->generate($date, $requestedUserId);
 
         return Pdf::loadView('transactions.report-pdf', $report)
             ->stream("daily-report-{$date->format('Ymd')}.pdf");
     }
+
 }

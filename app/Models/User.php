@@ -15,6 +15,18 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
     use HasRoles;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            // Only set UUID if not already provided by sync payload
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Str::uuid();
+            }
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *

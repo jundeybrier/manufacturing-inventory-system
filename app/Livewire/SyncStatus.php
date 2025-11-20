@@ -61,6 +61,7 @@ class SyncStatus extends Component
 
             $this->logMessage('Server connection OK.');
             $payload = $response->json();
+            $this->logMessage("RAW API RESPONSE: " . json_encode($response->json()));
 
             $offices         = $payload['records']['offices'] ?? [];
             $users           = $payload['records']['users'] ?? [];
@@ -69,6 +70,9 @@ class SyncStatus extends Component
             $services        = $payload['records']['services'] ?? [];
             $feeComponents   = $payload['records']['fee_components'] ?? [];
             $productServices = $payload['records']['product_services'] ?? [];
+            $permissions = $payload['records']['permissions'] ?? [];
+            $roles = $payload['records']['roles'] ?? [];
+            $userRoles = $payload['records']['user_roles'] ?? [];
 
             DB::transaction(function () use (
                 $offices,
@@ -77,7 +81,10 @@ class SyncStatus extends Component
                 $products,
                 $services,
                 $feeComponents,
-                $productServices
+                $productServices,
+                $permissions,
+                $roles,
+                $userRoles
             ) {
 
                 // --- Offices ---
@@ -96,6 +103,7 @@ class SyncStatus extends Component
                 $this->logMessage("Syncing " . count($users) . " user(s)…");
                 foreach ($users as $u) {
                     User::updateOrCreate(['id' => $u['id']], [
+                        'uuid'       => $u['uuid'],
                         'name'       => $u['name'],
                         'password'   => $u['password'],
                         'email'      => $u['email'],
@@ -107,7 +115,6 @@ class SyncStatus extends Component
                     $this->logMessage("→ User: {$u['name']} synced.");
                 }
                 // --- Permissions ---
-                $permissions = $payload['records']['permissions'] ?? [];
                 $this->logMessage("Syncing " . count($permissions) . " permission(s)…");
 
                 foreach ($permissions as $perm) {
@@ -116,7 +123,6 @@ class SyncStatus extends Component
                 }
 
                 // --- Roles ---
-                $roles = $payload['records']['roles'] ?? [];
                 $this->logMessage("Syncing " . count($roles) . " role(s)…");
 
                 foreach ($roles as $role) {
@@ -124,17 +130,21 @@ class SyncStatus extends Component
                     $this->logMessage("→ Role: {$role['name']} synced.");
                 }
 
-                $userRoles = $payload['records']['user_roles'] ?? [];
+                // Clear permission cache before assignment
+                app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+                // --- Role Assignments ---
                 $this->logMessage("Syncing " . count($userRoles) . " user ↔ role assignment(s)…");
 
                 foreach ($userRoles as $ur) {
                     $localUser = User::where('uuid', $ur['user_uuid'])->first();
+
                     if (! $localUser) {
-                        $this->logMessage("⚠ Skipped role sync for missing user: {$ur['user_uuid']}");
+                        $this->logMessage("⚠ Missing user: {$ur['user_uuid']}");
                         continue;
                     }
 
-                    $localUser->syncRoles($ur['roles']); // assign array ['teller', 'supervisor']
+                    $localUser->syncRoles($ur['roles']);
                     $this->logMessage("→ Roles updated for: {$localUser->name}");
                 }
 

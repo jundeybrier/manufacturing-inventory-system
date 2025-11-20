@@ -74,6 +74,7 @@ class SyncController extends Controller
         // NEW: Roles & Permissions
         $permissions = Permission::select('name')->get();
         $roles = Role::select('name')->get();
+        $rolePermissions = \DB::table('role_has_permissions')->get();
 
         // NEW: User ↔ Role Assignments
         $userRoles = [];
@@ -101,6 +102,7 @@ class SyncController extends Controller
                 'permissions'      => $permissions,
                 'roles'            => $roles,
                 'user_roles'       => $userRoles,
+                'role_permissions' => $rolePermissions,
             ],
 
             'counts' => [
@@ -114,6 +116,7 @@ class SyncController extends Controller
                 'permissions'      => $permissions->count(),
                 'roles'            => $roles->count(),
                 'user_roles'       => count($userRoles),
+                'role_permissions'       => count($rolePermissions),
             ],
         ]);
     }
