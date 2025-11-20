@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class SyncStatus extends Component
 {
@@ -104,6 +106,38 @@ class SyncStatus extends Component
                     ]);
                     $this->logMessage("→ User: {$u['name']} synced.");
                 }
+                // --- Permissions ---
+                $permissions = $payload['records']['permissions'] ?? [];
+                $this->logMessage("Syncing " . count($permissions) . " permission(s)…");
+
+                foreach ($permissions as $perm) {
+                    Permission::firstOrCreate(['name' => $perm['name']]);
+                    $this->logMessage("→ Permission: {$perm['name']} synced.");
+                }
+
+                // --- Roles ---
+                $roles = $payload['records']['roles'] ?? [];
+                $this->logMessage("Syncing " . count($roles) . " role(s)…");
+
+                foreach ($roles as $role) {
+                    Role::firstOrCreate(['name' => $role['name']]);
+                    $this->logMessage("→ Role: {$role['name']} synced.");
+                }
+
+                $userRoles = $payload['records']['user_roles'] ?? [];
+                $this->logMessage("Syncing " . count($userRoles) . " user ↔ role assignment(s)…");
+
+                foreach ($userRoles as $ur) {
+                    $localUser = User::where('uuid', $ur['user_uuid'])->first();
+                    if (! $localUser) {
+                        $this->logMessage("⚠ Skipped role sync for missing user: {$ur['user_uuid']}");
+                        continue;
+                    }
+
+                    $localUser->syncRoles($ur['roles']); // assign array ['teller', 'supervisor']
+                    $this->logMessage("→ Roles updated for: {$localUser->name}");
+                }
+
 
                 // --- Accounts ---
                 $this->logMessage("Syncing " . count($accounts) . " account(s)…");
