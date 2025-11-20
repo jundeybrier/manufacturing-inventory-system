@@ -53,8 +53,7 @@ RUN php artisan config:cache \
 # ============================================================
 FROM php:8.3-fpm-alpine
 
-RUN apk add --no-cache \
-    icu-dev libzip-dev oniguruma-dev zip unzip git bash curl supervisor \
+RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev netcat-openbsd \
     && docker-php-ext-install pdo_mysql intl zip bcmath opcache
 
 WORKDIR /var/www/html
@@ -69,4 +68,5 @@ EXPOSE 9000
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-CMD ["entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]

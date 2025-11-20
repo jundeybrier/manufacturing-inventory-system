@@ -14,26 +14,29 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Create Permissions
+        // 1️⃣ Permissions list
         $permissions = [
             'manage offices',
             'manage users',
             'manage services',
             'manage accounts',
             'manage fee components',
+            'view office reports', // 👈 NEW permission
         ];
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // 2. Create Admin Role
+        // 2️⃣ Create or update admin role
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
-
-        // Assign all permissions to admin
         $adminRole->syncPermissions(Permission::all());
 
-        // 3. Create dummy office if not exists
+        // 3️⃣ Create Supervisor Role + only report permissions
+        $supervisorRole = Role::firstOrCreate(['name' => 'supervisor']);
+        $supervisorRole->syncPermissions(['view office reports']); // 👈 only this permission for now
+
+        // 4️⃣ Create dummy office if not exists
         $officeId = DB::table('offices')->insertGetId([
             'uuid'       => (string) Str::uuid(),
             'name'       => 'Main Office (Development)',
@@ -42,28 +45,25 @@ class AdminSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        // 4. Create Super Admin User
+        // 5️⃣ Create Admin Users
         $superAdmin = User::updateOrCreate(
             ['email' => 'jundeybrier@gmail.com'],
             [
                 'name'      => 'Super Admin',
-                'password'  => Hash::make('qweasdzxc'),
+                'password'  => Hash::make(''), // Update manually later
                 'office_id' => $officeId,
             ]
         );
-
         $superAdmin->assignRole('admin');
 
-        // 5. Create PITS Admin User
         $pitsAdmin = User::updateOrCreate(
             ['email' => 'oca.pits@dfa.gov.ph'],
             [
                 'name'      => 'Super Admin - PITS',
-                'password'  => Hash::make('P@ssw0rd123$'),
+                'password'  => Hash::make(''),
                 'office_id' => $officeId,
             ]
         );
-
         $pitsAdmin->assignRole('admin');
     }
 }

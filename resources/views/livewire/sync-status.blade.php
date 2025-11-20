@@ -27,7 +27,7 @@
             :disabled="$isSyncing"
             spinner
         >
-            <i class="fas fa-cloud-upload-alt mr-1"></i> Sync Now 1
+            <i class="fas fa-cloud-upload-alt mr-1"></i> Sync Now
         </flux:button>
 
         {{-- Login Redirect --}}

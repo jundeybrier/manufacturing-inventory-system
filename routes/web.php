@@ -28,8 +28,14 @@ Route::middleware(['auth','site_permission'])->group(function () {
 Route::middleware(['auth','site_permission'])->prefix('transactions')->group(function () {
     Route::get('/', All::class)->name('transactions.index');
     Route::get('/create', Create::class)->name('transactions.create');
-    Route::get('/transactions/daily-report', [\App\Http\Controllers\TransactionReportController::class, 'daily'])
-        ->name('transactions.daily-report');
+});
+
+Route::middleware(['auth', 'site_permission'])->prefix('reports')->group(function () {
+    Route::get('/', \App\Livewire\Reports\Index::class)
+        ->name('reports.index');
+
+    Route::get('/daily', [\App\Http\Controllers\TransactionReportController::class, 'daily'])
+        ->name('reports.daily');
 });
 
 Route::get('/print/receipt/{transaction}', [\App\Http\Controllers\ReceiptController::class, 'show'])

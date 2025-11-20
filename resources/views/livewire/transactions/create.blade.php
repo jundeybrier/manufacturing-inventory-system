@@ -58,7 +58,13 @@
                     <flux:button wire:click="showHistory" variant="outline" size="sm" class="justify-start cursor-pointer">
                         <i class="fas fa-history mr-2"></i> History
                     </flux:button>
-                    <flux:button variant="outline" size="sm" target="_blank" href="{{ route('transactions.daily-report') }}" class="justify-start cursor-pointer">
+                    <flux:button
+                        variant="outline"
+                        size="sm"
+                        target="_blank"
+                        href="{{ route('reports.daily', ['date' => now()->format('Y-m-d')]) }}"
+                        class="justify-start cursor-pointer"
+                    >
                         <i class="fas fa-print mr-2"></i> Preview Report
                     </flux:button>
                     <flux:button wire:click="confirmClose" variant="outline" size="sm" class="justify-start cursor-pointer">

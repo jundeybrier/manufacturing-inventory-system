@@ -5,6 +5,12 @@
     wire:navigate>
     <i class="fas fa-cash-register mr-2"></i> {{ __('Cashiering Module') }}
 </flux:navlist.item>
+<flux:navlist.item
+    :href="route('reports.index')"
+    :current="request()->routeIs('reports.index')"
+    wire:navigate>
+    <i class="fas fa-clipboard mr-2"></i> {{ __('Reports') }}
+</flux:navlist.item>
 @if(app_is_server())
     @role('admin')
     <flux:navlist.item
