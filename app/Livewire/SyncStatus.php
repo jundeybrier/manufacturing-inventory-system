@@ -61,7 +61,6 @@ class SyncStatus extends Component
 
             $this->logMessage('Server connection OK.');
             $payload = $response->json();
-            $this->logMessage("RAW API RESPONSE: " . json_encode($response->json()));
 
             $offices         = $payload['records']['offices'] ?? [];
             $users           = $payload['records']['users'] ?? [];

@@ -60,11 +60,11 @@ class SyncController extends Controller
 
         $services = Service::select(
             'id','uuid','office_id','name','type','description','is_active','created_at','updated_at'
-        )->where('office_id', $office->id)->get();
+        )->get();
 
         $feeComponents = FeeComponent::select(
             'id','uuid','service_id','account_id','office_id','name','base_amount','is_variable','currency','is_active','created_at','updated_at'
-        )->where('office_id', $office->id)->get();
+        )->get();
 
         $productServices = ProductService::select(
             'id','uuid','product_id','service_id','created_at','updated_at','deleted_at'
