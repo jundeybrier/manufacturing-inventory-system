@@ -57,6 +57,11 @@ Route::middleware(['site_permission'])->group(function () {
 //    Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
 });
 
+Route::middleware('auth')->group(function () {
+    Route::get('/preferences', App\Livewire\UserPreferences::class)
+        ->name('user.preferences');
+});
+
 if (config('app.mode') === 'client') {
     Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
 }

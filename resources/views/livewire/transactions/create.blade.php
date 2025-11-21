@@ -16,7 +16,7 @@
         <div class="col-span-12 md:col-span-2 space-y-4">
             <div class="border border-gray-200 dark:border-zinc-700 shadow rounded-xl p-5 bg-white dark:bg-zinc-900/80">
                 <h2 class="font-bold text-lg mb-2 flex items-center gap-2">
-                    <i class="fas fa-chart-pie text-blue-500"></i>
+                    <i class="fas fa-chart-pie text-green-600"></i>
                     Today's Summary
                 </h2>
                 <div class="space-y-1">
@@ -87,12 +87,26 @@
         <div class="col-span-12 md:col-span-6 space-y-4">
             <div class="border border-gray-200 dark:border-zinc-700 shadow rounded-xl p-5 bg-white dark:bg-zinc-900/80">
                 <h2 class="font-bold text-lg mb-3 flex items-center gap-2">
-                    <i class="fas fa-box-open text-indigo-400"></i>
+                    <i class="fas fa-box-open text-green-600"></i>
                     Available Products
                 </h2>
 
                 @if($activeSession && $alreadyOpenedToday)
+                    @php
+                        $hiddenProducts = auth()->user()->pref('products.hidden', []);
+                    @endphp
+                    <div class="flex justify-end mb-3">
+                        <button
+                            wire:click="openManageProducts"
+                            class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700
+               bg-white dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800
+               transition-colors"
+                        >
+                            <i class="fas fa-gear"></i>
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-2">
+
                         @foreach ($products as $product)
                             @php
                                 $total = 0;
@@ -101,48 +115,55 @@
                                 foreach ($product->services as $service) {
                                     foreach ($service->feeComponents as $fee) {
                                         if ($fee->is_active) {
-                                            if ($fee->is_variable) {
-                                                $hasVariable = true;
-                                            } else {
-                                                $total += $fee->base_amount;
-                                            }
+                                            $fee->is_variable ? $hasVariable = true : $total += $fee->base_amount;
                                         }
                                     }
                                 }
+
+                                $isHidden = in_array($product->id, $hiddenProducts);
                             @endphp
 
-                            <button
-                                wire:click="selectProduct({{ $product->id }})"
-                                class="w-full cursor-pointer text-left border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 bg-gray-50 dark:bg-zinc-900/60 hover:shadow hover:border-blue-400 dark:hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                                aria-label="Select {{ $product->name }}"
-                            >
-                                <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
-                                    {{ $product->name }}
-                                </div>
-                                @if($product->description)
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
-                                        {{ $product->description }}
+                            <div class="relative group">
+                                {{-- Product selection button --}}
+                                <button
+                                    wire:click="selectProduct({{ $product->id }})"
+                                    class="w-full cursor-pointer text-left border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3
+                   bg-gray-50 dark:bg-zinc-900/60 hover:shadow hover:border-blue-400 dark:hover:border-blue-400
+                   transition-colors focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                                >
+                                    <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
+                                        {{ $product->name }}
                                     </div>
-                                @endif
 
-                                <div class="mt-2 flex items-center gap-2">
-                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
-                        ₱{{ number_format($total, 2) }}
-                    </span>
-                                    @if($hasVariable)
-                                        <span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs border border-orange-400 text-orange-700 dark:border-orange-500 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/40 font-semibold">
-                            + variable
-                        </span>
+                                    @if($product->description)
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
+                                            {{ $product->description }}
+                                        </div>
                                     @endif
-                                </div>
 
-                                @if($product->services->count())
-                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                        Includes: {{ $product->services->pluck('name')->implode(', ') }}
+                                    <div class="mt-2 flex items-center gap-2">
+                                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
+                                        ₱{{ number_format($total, 2) }}
+                                    </span>
+
+                                        @if($hasVariable)
+                                            <span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs border border-orange-400
+                                 text-orange-700 dark:border-orange-500 dark:text-orange-300 bg-orange-50
+                                 dark:bg-orange-900/40 font-semibold">
+                        + variable
+                    </span>
+                                        @endif
                                     </div>
-                                @endif
-                            </button>
+
+                                    @if($product->services->count())
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            Includes: {{ $product->services->pluck('name')->implode(', ') }}
+                                        </div>
+                                    @endif
+                                </button>
+                            </div>
                         @endforeach
+
                     </div>
                 @else
                     <div class="px-3 py-2 rounded bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700">
@@ -392,7 +413,16 @@
                                             </td>
 
                                             <td class="p-2 border border-gray-300 dark:border-gray-600 text-green-700 dark:text-green-400 font-bold text-right align-top">
-                                                ₱{{ number_format($transaction->computedTotal, 2) }}
+                                                @php
+                                                    $details = $transaction->details()->get(); // ensures fresh relationship load
+
+                                                    $hasUsd = $details->contains('currency', 'USD')
+                                                        || $details->contains(fn($d) => !is_null($d->exchange_rate));
+
+                                                    $symbol = $hasUsd ? '$' : '₱';
+                                                @endphp
+
+                                                {{ $symbol }}{{ number_format($transaction->computedTotal, 2) }}
 
                                                 {{-- 💡 Now show services instead of individual fees --}}
                                                 <ul class="text-xs text-gray-400 text-left mt-1 ml-1">
@@ -491,6 +521,55 @@
 
 
         </div>
+        @if($showManageProducts)
+            <div class="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
+                <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-xl p-6 w-[420px] max-h-[80vh] flex flex-col overflow-hidden">
+
+                    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-500"></i>
+                        Manage Products
+                    </h3>
+
+                    {{-- Product List --}}
+                    <div class="space-y-2 overflow-y-auto pr-1 border-t border-gray-200 dark:border-gray-700 pt-3">
+                        @foreach(\App\Models\Product::orderBy('name')->get() as $product)
+                            @php
+                                $isHidden = in_array($product->id, $hiddenProducts);
+                            @endphp
+
+                            <div class="flex justify-between items-center py-1.5 px-2 bg-gray-50 dark:bg-zinc-800/40 rounded-lg">
+                    <span class="text-sm {{ $isHidden ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-gray-200' }}">
+                        {{ $product->name }}
+                    </span>
+
+                                <button
+                                    wire:click="toggleProductVisibility({{ $product->id }})"
+                                    class="text-xs font-semibold px-3 py-1 rounded-lg transition
+                            {{ $isHidden
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900'
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900' }}"
+                                >
+                                    {{ $isHidden ? 'Unhide' : 'Hide' }}
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="flex justify-end mt-5 border-t border-gray-200 dark:border-gray-700 pt-3">
+                        <button
+                            wire:click="closeManageProducts"
+                            class="text-sm px-4 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
+                bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 transition"
+                        >
+                            Close
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        @endif
+
     </div>
         <script>
             document.addEventListener('livewire:init', () => {

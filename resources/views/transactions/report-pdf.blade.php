@@ -291,30 +291,64 @@
                     <td class="center" style="padding:5px;" width="40%">Name/Designation/Signature</td>
                 </tr>
             </table>
-            <table style="border: 1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
+            @php
+                $roles = auth()->user()->pref('report_roles', []);
+                $collector = strtoupper($user->name);
+
+                $consular = $roles['consular_supervisor'] ?? null;
+                $admin = $roles['administrative_officer'] ?? null;
+                $head = $roles['head_of_consular_office'] ?? null;
+            @endphp
+
+            {{-- Collecting Officer --}}
+            <table style="border:1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
                 <tr>
-                    <td class="center" style="padding:5px;" width="60%">Daily collection were duly receipted and accounted for and are under my accountability</td>
-                    <td class="center" style="padding:5px;" width="40%"><br><u><?= strtoupper($user->fullname) ?></u><br>Collecting Officer</td>
+                    <td class="center" width="60%">Daily collection were duly receipted and accounted for and are under my accountability</td>
+                    <td class="center" width="40%">
+                        <br><u>{{ $collector }}</u><br>
+                        Collecting Officer
+                    </td>
                 </tr>
             </table>
-            <table style="border: 1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
-                <tr>
-                    <td class="center" style="padding:5px;" width="60%">No. of Work Units tallies with Consular records</td>
-                    <td class="center" style="padding:5px;" width="40%"><br><u><?= strtoupper($user->office->consular_officer) ?></u><br><?= $user->office->consular_officer_designation ?></td>
-                </tr>
-            </table>
-            <table style="border: 1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
-                <tr>
-                    <td class="center" style="padding:5px;" width="60%">Total Collection and Deposits Slips were verified and found correct</td>
-                    <td class="center" style="padding:5px;" width="40%"><br><u><?= strtoupper($user->office->administrative_officer) ?></u><br><?= $user->office->administrative_officer_designation ?></td>
-                </tr>
-            </table>
-            <table style="border: 1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
-                <tr>
-                    <td class="center" style="padding:5px;vertical-align:top;" width="60%">Noted by:</td>
-                    <td class="center" style="padding:5px;" width="40%"><br><br><u><?= strtoupper($user->office->head_of_consular_office) ?></u><br><?= $user->office->head_of_consular_office_designation ?></td>
-                </tr>
-            </table>
+
+            {{-- Consular Supervisor --}}
+            @if($consular)
+                <table style="border:1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
+                    <tr>
+                        <td class="center" width="60%">No. of Work Units tallies with Consular records</td>
+                        <td class="center" width="40%">
+                            <br><u>{{ strtoupper($consular['name']) }}</u><br>
+                            {{ $consular['designation'] }}
+                        </td>
+                    </tr>
+                </table>
+            @endif
+
+            {{-- Administrative Officer --}}
+            @if($admin)
+                <table style="border:1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
+                    <tr>
+                        <td class="center" width="60%">Total Collection and Deposit Slips were verified and found correct</td>
+                        <td class="center" width="40%">
+                            <br><u>{{ strtoupper($admin['name']) }}</u><br>
+                            {{ $admin['designation'] }}
+                        </td>
+                    </tr>
+                </table>
+            @endif
+
+            {{-- Head of Consular Office --}}
+            @if($head)
+                <table style="border:1px solid #f4f4f4;font-size:0.8em;padding:10px;margin-top:4px;" width="100%">
+                    <tr>
+                        <td class="center" width="60%">Noted by:</td>
+                        <td class="center" width="40%">
+                            <br><br><u>{{ strtoupper($head['name']) }}</u><br>
+                            {{ $head['designation'] }}
+                        </td>
+                    </tr>
+                </table>
+            @endif
         </td>
         <td width="2%">&nbsp;</td>
         <td width="43%" style="vertical-align:top;">
@@ -460,6 +494,34 @@
     </tbody>
 </table>
 
+<br><br>
+<table width="100%" style="font-size:0.7em; text-align:center;">
+    <tr>
+        {{-- Consular Supervisor --}}
+        <td width="25%">
+            <u>{{ strtoupper($collector) }}</u><br>
+            Collecting Officer
+        </td>
+
+        <td width="25%">
+            <u>{{ strtoupper($consular['name'] ?? '') }}</u><br>
+            {{ $consular['designation'] ?? '' }}
+        </td>
+
+        {{-- Administrative Officer --}}
+        <td width="25%">
+            <u>{{ strtoupper($admin['name'] ?? '') }}</u><br>
+            {{ $admin['designation'] ?? '' }}
+        </td>
+
+        {{-- Head of Consular Office --}}
+        <td width="25%">
+            <u>{{ strtoupper($head['name'] ?? '') }}</u><br>
+            {{ $head['designation'] ?? '' }}
+        </td>
+    </tr>
+</table>
+
 
 
 <div style="page-break-after: always;"></div>
@@ -577,7 +639,33 @@
 
     </tbody>
 </table>
+<br><br>
+<table width="100%" style="font-size:0.7em; text-align:center;">
+    <tr>
+        {{-- Consular Supervisor --}}
+        <td width="25%">
+            <u>{{ strtoupper($collector) }}</u><br>
+            Collecting Officer
+        </td>
 
+        <td width="25%">
+            <u>{{ strtoupper($consular['name'] ?? '') }}</u><br>
+            {{ $consular['designation'] ?? '' }}
+        </td>
+
+        {{-- Administrative Officer --}}
+        <td width="25%">
+            <u>{{ strtoupper($admin['name'] ?? '') }}</u><br>
+            {{ $admin['designation'] ?? '' }}
+        </td>
+
+        {{-- Head of Consular Office --}}
+        <td width="25%">
+            <u>{{ strtoupper($head['name'] ?? '') }}</u><br>
+            {{ $head['designation'] ?? '' }}
+        </td>
+    </tr>
+</table>
 
 @php
     $voidedTransactions = \App\Models\Transaction::with(['details', 'voidedBy'])
@@ -638,7 +726,33 @@
         @endforeach
         </tbody>
     </table>
+    <br><br>
+    <table width="100%" style="font-size:0.7em; text-align:center;">
+        <tr>
+            {{-- Consular Supervisor --}}
+            <td width="25%">
+                <u>{{ strtoupper($collector) }}</u><br>
+                Collecting Officer
+            </td>
 
+            <td width="25%">
+                <u>{{ strtoupper($consular['name'] ?? '') }}</u><br>
+                {{ $consular['designation'] ?? '' }}
+            </td>
+
+            {{-- Administrative Officer --}}
+            <td width="25%">
+                <u>{{ strtoupper($admin['name'] ?? '') }}</u><br>
+                {{ $admin['designation'] ?? '' }}
+            </td>
+
+            {{-- Head of Consular Office --}}
+            <td width="25%">
+                <u>{{ strtoupper($head['name'] ?? '') }}</u><br>
+                {{ $head['designation'] ?? '' }}
+            </td>
+        </tr>
+    </table>
 @endif
 
 @if($voidedTransactions->count())
@@ -715,17 +829,29 @@
             </p>
 
             <br><br>
-
-            <table width="100%">
+            <table width="100%" style="font-size:0.7em; text-align:center;">
                 <tr>
-                    <td class="center" style="width:50%;font-size:12px;">
-                        <u>{{ strtoupper(optional($txn->voidedBy)->fullname ?? $user->fullname) }}</u><br>
-                        Voided By<br>
-                        {{ \Carbon\Carbon::parse($txn->voided_at)->format('F d, Y h:i A') }}
+                    {{-- Consular Supervisor --}}
+                    <td width="25%">
+                        <u>{{ strtoupper($collector) }}</u><br>
+                        Collecting Officer
                     </td>
-                    <td class="center" style="width:50%;font-size:12px;">
-                        <u>{{ strtoupper($user->office->head_of_consular_office ?? 'N/A') }}</u><br>
-                        Head of Consular Office
+
+                    <td width="25%">
+                        <u>{{ strtoupper($consular['name'] ?? '') }}</u><br>
+                        {{ $consular['designation'] ?? '' }}
+                    </td>
+
+                    {{-- Administrative Officer --}}
+                    <td width="25%">
+                        <u>{{ strtoupper($admin['name'] ?? '') }}</u><br>
+                        {{ $admin['designation'] ?? '' }}
+                    </td>
+
+                    {{-- Head of Consular Office --}}
+                    <td width="25%">
+                        <u>{{ strtoupper($head['name'] ?? '') }}</u><br>
+                        {{ $head['designation'] ?? '' }}
                     </td>
                 </tr>
             </table>

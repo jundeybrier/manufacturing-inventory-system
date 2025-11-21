@@ -60,6 +60,9 @@ class Create extends BaseComponent
     public $selectedTransaction = null;
     public $void_reason = '';
 
+    public $showManageProducts = false;
+    public $hiddenProductsList = [];
+
 // This method is triggered by the button
     public function confirmSubmit()
     {
@@ -90,14 +93,23 @@ class Create extends BaseComponent
 
     public function mount()
     {
-        $this->userId = auth()->id();
+        $user = auth()->user();
+        $this->userId = $user->id;
+        $hidden = $user->pref('products.hidden', []);
 
         // Load products with their services and fee components
-        $this->products = Product::with([
-            'services.feeComponents' => function ($q) {
-                $q->where('is_active', 1)->with('account');
-            }
-        ])->where('is_active', 1)->get();
+
+        $this->products = Product::query()
+            ->where('is_active', true)
+            ->when(!empty($hidden), fn($q) =>
+            $q->whereNotIn('id', $hidden)
+            )
+            ->with([
+                'services' => fn($q) => $q->where('is_active', true),
+                'services.feeComponents' => fn($q) =>
+                $q->where('is_active', true)->with('account'),
+            ])
+            ->get();
 
         $this->or_number = auth()->user()->nextOrNumber();
 
@@ -300,8 +312,20 @@ class Create extends BaseComponent
 
     public function recalculateTotal()
     {
+        $rate = $this->usdConversionRate ?? 1;
+
         $this->totalAmount = collect($this->selectedServices)
-            ->sum(fn($s) => $s['amount'] * $s['quantity']);
+            ->sum(function ($s) use ($rate) {
+                $amount = floatval($s['amount']);
+                $qty    = intval($s['quantity']);
+
+                // If USD — convert to PHP before adding
+                if (($s['currency'] ?? 'PHP') === 'USD') {
+                    return $amount * $qty * $rate;
+                }
+
+                return $amount * $qty;
+            });
     }
 
     public function submitTransaction()
@@ -690,6 +714,38 @@ class Create extends BaseComponent
         $this->showVoidModal = false;
         $this->dispatch('notify', message: 'Transaction voided successfully.');
         $this->todayHistory = \App\Models\Transaction::whereDate('created_at', today())->get(); // if you have a refresh function
+    }
+
+    public function openManageProducts()
+    {
+        $hidden = auth()->user()->pref('products.hidden', []);
+        $this->hiddenProductsList = Product::whereIn('id', $hidden)->get();
+        $this->showManageProducts = true;
+    }
+
+    public function closeManageProducts()
+    {
+        $this->showManageProducts = false;
+    }
+
+    public function toggleProductVisibility($productId)
+    {
+        $user = auth()->user();
+        $hidden = $user->pref('products.hidden', []);
+
+        if(in_array($productId, $hidden)) {
+            $hidden = array_values(array_diff($hidden, [$productId]));
+        } else {
+            $hidden[] = $productId;
+        }
+
+        $user->setPref('products.hidden', $hidden);
+
+        // Refresh both visible + modal list
+        $this->mount();
+        if($this->showManageProducts) {
+            $this->openManageProducts();
+        }
     }
 
     public function render()

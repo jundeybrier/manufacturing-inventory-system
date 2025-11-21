@@ -11,6 +11,12 @@
     wire:navigate>
     <i class="fas fa-clipboard mr-2"></i> {{ __('Reports') }}
 </flux:navlist.item>
+<flux:navlist.item
+    :href="route('user.preferences')"
+    :current="request()->routeIs('user.preferences')"
+    wire:navigate>
+    <i class="fas fa-gear mr-2"></i> {{ __('Preferences') }}
+</flux:navlist.item>
 @if(app_is_server())
     @role('admin')
     <flux:navlist.item

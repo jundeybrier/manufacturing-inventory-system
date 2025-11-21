@@ -110,4 +110,27 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Office::class);
     }
+
+    public function preferences()
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    public function pref($key, $default = null)
+    {
+        return data_get($this->preferences->settings ?? [], $key, $default);
+    }
+
+    public function setPref(string $key, $value): void
+    {
+        $prefs = $this->preferences->settings ?? [];
+        data_set($prefs, $key, $value);
+
+        $this->preferences()->updateOrCreate(
+            ['user_id' => $this->id],
+            ['settings' => $prefs]
+        );
+
+        $this->refresh();
+    }
 }

@@ -28,6 +28,25 @@
     --color-accent-foreground: var(--color-white);
 }
 
+@font-face {
+    font-family: 'DotMatrix';
+    src: url('/fonts/DotGothic16.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@keyframes gradient-move {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+    background-size: 200% 200%;
+    animation: gradient-move 3s ease infinite;
+}
+
 @layer theme {
     .dark {
         --color-accent: var(--color-white);
