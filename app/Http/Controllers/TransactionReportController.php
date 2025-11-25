@@ -15,7 +15,9 @@ class TransactionReportController extends Controller
             ? Carbon::parse($request->input('date'))
             : today();
 
-        $requestedUserId = $request->input('user', auth()->id());
+        $requestedUserId = $request->filled('user')
+            ? $request->input('user')
+            : auth()->id();
 
         $requestedUser = \App\Models\User::findOrFail($requestedUserId);
         $currentUser = auth()->user();
@@ -29,7 +31,7 @@ class TransactionReportController extends Controller
         // Tellers can only view themselves
         else {
             if ($currentUser->id !== $requestedUserId) {
-                abort(403, 'Unauthorized: Teller cannot view others.');
+                abort(403, 'Unauthorized: User cannot view others.');
             }
         }
 

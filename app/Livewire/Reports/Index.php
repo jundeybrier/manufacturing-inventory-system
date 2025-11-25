@@ -36,7 +36,6 @@ class Index extends Component
             return;
         }
 
-        // Teller (default): Can only generate own report
         $this->canSelectUser = false;
         $this->officeUsers = [$authUser];
         $this->userId = $authUser->id;

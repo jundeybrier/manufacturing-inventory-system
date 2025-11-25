@@ -117,6 +117,10 @@ class SyncClosedSessionsJob implements ShouldQueue
             ]);
 
             try {
+                Log::info("📤 FULL SYNC PAYLOAD", [
+                    'json' => json_encode($payload, JSON_PRETTY_PRINT)
+                ]);
+
                 $response = Http::withToken(config('services.server.token'))
                     ->post(config('services.server.url') . '/api/sync/transactions', $payload);
 

@@ -22,7 +22,6 @@ docker/*
 .env
 .env.local
 .env.*
-!.env.docker
 
 *.tar
 *.zip

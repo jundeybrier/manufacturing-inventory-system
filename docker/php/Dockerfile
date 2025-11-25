@@ -38,7 +38,7 @@ WORKDIR /app
 
 # Copy full application source (this layer rebuilds fast when code changes)
 COPY . .
-
+RUN rm -f .env .env.docker || true
 # Copy vendor from previous stage
 COPY --from=vendor /app/vendor ./vendor
 

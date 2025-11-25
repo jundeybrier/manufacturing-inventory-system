@@ -93,6 +93,7 @@ class SyncTransactionsController extends Controller
                         'voided_at' => $t['voided_at'],
                         'created_at' => $t['created_at'],
                         'updated_at' => $t['updated_at'],
+                        'synced_at' => now(),
                     ]
                 );
 
@@ -113,6 +114,7 @@ class SyncTransactionsController extends Controller
                             'exchange_rate' => $d['exchange_rate'],
                             'created_at' => $d['created_at'],
                             'updated_at' => $d['updated_at'],
+                            'synced_at' => now(),
                         ]
                     );
                 }

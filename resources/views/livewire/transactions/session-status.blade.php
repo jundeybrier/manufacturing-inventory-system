@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-2 p-5">
 
-    <b>Hi, Jundey!</b>
+    <b>Hi, {{ auth()->user()->name }}!</b>
     @if(!$activeSession && !$alreadyOpenedToday)
         <flux:button href="/transactions/create" variant="primary" size="sm" class="justify-start">
             <i class="fas fa-cash-register mr-2"></i> Open Register
@@ -20,7 +20,7 @@
     @if($activeSession && !$activeSession->closed_at && $alreadyOpenedToday)
         <div class="text-right text-xs">Total Collection:</div>
         <div style="font-family: 'DotMatrix', monospace;" class="p-2 pt-4 text-right text-xl bg-zinc-900 text-white text-[40px] leading-tight">
-            P 12,312.00
+            P {{ $activeSession?number_format($activeSession->totalCollections, 2):0 }}
         </div>
         <flux:button href="/transactions/create" variant="primary" size="sm" class="justify-start cursor-pointer bg-green-600 hover:bg-green-800 text-white">
             <i class="fas fa-check mr-2"></i> Continue Cashiering Session
