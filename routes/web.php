@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\RegisterUserController;
 use App\Livewire\Transactions\All;
 use App\Livewire\Transactions\Create;
 use Illuminate\Support\Facades\Route;
+use App\Livewire\Deposits\Index;
 use Livewire\Volt\Volt;
 
 Route::redirect('/register', '/registration');
@@ -64,6 +65,16 @@ Route::middleware('auth')->group(function () {
 
 if (config('app.mode') === 'client') {
     Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
+
+    Route::middleware(['site_permission'])->group(function () {
+        Route::get('/deposits', Index::class)->name('deposits.index');
+    });
+
+    Route::middleware(['auth','site_permission'])->prefix('transactions')->group(function () {
+        Route::get('/', All::class)->name('transactions.index');
+        Route::get('/create', Create::class)->name('transactions.create');
+    });
+
 }
 
 require __DIR__.'/auth.php';

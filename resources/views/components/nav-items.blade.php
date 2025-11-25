@@ -6,6 +6,12 @@
     <i class="fas fa-cash-register mr-2"></i> {{ __('Cashiering Module') }}
 </flux:navlist.item>
 <flux:navlist.item
+    :href="route('deposits.index')"
+    :current="request()->routeIs('deposits.index')"
+    wire:navigate>
+    <i class="fas fa-bank mr-2"></i> {{ __('Deposits') }}
+</flux:navlist.item>
+<flux:navlist.item
     :href="route('reports.index')"
     :current="request()->routeIs('reports.index')"
     wire:navigate>

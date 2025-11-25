@@ -19,7 +19,9 @@
                         Exclusively made for the Department of Foreign Affairs only
                     </p>
                 </div>
-                @livewire('stress-button')
+                @if (config('app.stress_relief_enabled'))
+                    @livewire('stress-button')
+                @endif
             </div>
         </div>
         <div class="relative h-full flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">

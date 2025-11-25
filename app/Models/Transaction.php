@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class Transaction extends Model
 {
     protected $fillable = [
+        'uuid',
         'date',
         'reference_number',
         'or_number',
@@ -37,7 +38,7 @@ class Transaction extends Model
     {
         parent::boot();
         static::creating(function ($model) {
-            if (!$model->uuid) {
+            if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
             }
         });

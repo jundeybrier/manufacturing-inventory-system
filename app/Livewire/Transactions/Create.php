@@ -664,6 +664,8 @@ class Create extends BaseComponent
 
         $this->showCloseModal = false;
         $this->activeSession = null;
+
+        dispatch(new \App\Jobs\SyncClosedSessionsJob());
     }
 
     public function computeDenominationsTotal()

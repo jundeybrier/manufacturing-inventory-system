@@ -125,5 +125,6 @@ return [
 
     'mode' => env('APP_MODE', 'server'),
     'site_code' => env('APP_SITE_CODE', null),
+    'stress_relief_enabled' => env('STRESS_RELIEF_ENABLED', false),
 
 ];

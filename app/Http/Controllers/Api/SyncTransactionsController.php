@@ -91,6 +91,8 @@ class SyncTransactionsController extends Controller
                         'status' => $t['status'],
                         'voided_by' => $t['voided_by'],
                         'voided_at' => $t['voided_at'],
+                        'created_at' => $t['created_at'],
+                        'updated_at' => $t['updated_at'],
                     ]
                 );
 
@@ -109,6 +111,8 @@ class SyncTransactionsController extends Controller
                             'total' => $d['total'],
                             'currency' => $d['currency'],
                             'exchange_rate' => $d['exchange_rate'],
+                            'created_at' => $d['created_at'],
+                            'updated_at' => $d['updated_at'],
                         ]
                     );
                 }

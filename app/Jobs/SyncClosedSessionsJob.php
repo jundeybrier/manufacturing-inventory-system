@@ -23,7 +23,6 @@ class SyncClosedSessionsJob implements ShouldQueue
 
         $sessions = CashierSession::whereNotNull('closed_at')
             ->whereNull('synced_at')
-            ->limit(3)
             ->get();
 
         Log::info("📦 Found {$sessions->count()} closed session(s) to sync.");
@@ -82,6 +81,10 @@ class SyncClosedSessionsJob implements ShouldQueue
                         'currency' => $t->currency,
                         'exchange_rate' => $t->exchange_rate,
                         'status' => $t->status,
+                        'created_at' => $t->created_at,
+                        'updated_at' => $t->updated_at,
+                        'is_voided' => $t->is_voided,
+                        'void_reason' => $t->void_reason,
                         'voided_by' => $t->voided_by,
                         'voided_at' => $t->voided_at,
                         'details' => $t->details->map(function ($d) {
@@ -96,6 +99,8 @@ class SyncClosedSessionsJob implements ShouldQueue
                                 'total' => $d->total,
                                 'currency' => $d->currency,
                                 'exchange_rate' => $d->exchange_rate,
+                                'created_at' => $d->created_at,
+                                'updated_at' => $d->updated_at,
                             ];
                         }),
                     ];
