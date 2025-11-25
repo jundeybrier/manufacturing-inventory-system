@@ -1,4 +1,5 @@
 <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+@if (config('app.mode') === 'client') {
 <flux:navlist.item
     :href="route('transactions.create')"
     :current="request()->routeIs('transactions.create')"
@@ -23,6 +24,9 @@
     wire:navigate>
     <i class="fas fa-gear mr-2"></i> {{ __('Preferences') }}
 </flux:navlist.item>
+}
+@endif
+
 @if(app_is_server())
     @role('admin')
     <flux:navlist.item
