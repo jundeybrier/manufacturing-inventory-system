@@ -53,6 +53,22 @@ services:
         networks:
             - cashiering-net
 
+    queue:
+        image: ${REGISTRY_HOST}/dfa-cashiering-client-php:latest
+        container_name: cashiering-queue
+        depends_on:
+            - php
+            - mysql
+        command: php artisan queue:work --verbose --timeout=120 --tries=3
+        env_file:
+            - .env.docker
+        volumes:
+            - app_code:/var/www/html
+            - storage_data:/var/www/html/storage
+        restart: always
+        networks:
+            - cashiering-net
+
 networks:
     cashiering-net:
 

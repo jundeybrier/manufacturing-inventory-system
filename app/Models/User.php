@@ -133,4 +133,9 @@ class User extends Authenticatable
 
         $this->refresh();
     }
+
+    public function receiptLayout()
+    {
+        return $this->hasOne(ReceiptLayout::class);
+    }
 }

@@ -3,160 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <title>Receipt #{{ $transaction->or_number }}</title>
+
+    @php
+        $layout = auth()->user()->receiptLayout()->first()?->toArray()
+            ?? config('defaults'); // fallback if no layout set
+
+        // extract page size
+        $pageWidth  = $layout['page_width']  ?? '90mm';
+        $pageHeight = $layout['page_height'] ?? '188mm';
+    @endphp
+
     <style>
         @page {
-            size: 90mm 188mm;
-            margin: 5mm 5mm 5mm 8mm;
+            size: {{ $pageWidth }} {{ $pageHeight }};
+            margin: 0;
         }
 
         body {
-            font-family: Consolas, "Lucida Console", "Courier New", monospace;
-            font-size: 9px;
-            line-height: 1.2;
-            color: #000;
             margin: 0;
             padding: 0;
-            width: 90mm;
-            text-align: left;
+            font-family: "Courier New", monospace;
+            color: #000;
             background: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            position: relative;
+            width: {{ $pageWidth }};
+            height: {{ $pageHeight }};
         }
 
-        hr { border: none; border-top: 1px dashed #666; margin: 4px 0; }
-
-        .center { text-align: center; }
-        .right  { text-align: right; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-
-        th, td {
-            padding: 2px 0;
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 500;
+        .txt {
+            position: absolute;
             color: #000;
-        }
-
-        .pad-right-10 { padding-right: 22px; }
-        td.desc { width: 72%; }
-        td.amount { width: 28%; text-align: right; }
-
-        @media print {
-            body {
-                font-family: "Roboto Mono", monospace, "Lucida Console", Consolas, "Courier New", monospace;
-                font-size: 12px !important;
-                color: #000;
-            }
+            white-space: nowrap;
         }
     </style>
 </head>
+
 <body>
-<div class="center" style="margin-top:90px;">
+
+{{-- --------------------------------------------- --}}
+{{-- OFFICE NAME --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['office_name']['y'] }}mm;
+        left: {{ $layout['office_name']['x'] }}mm;
+        font-size: {{ $layout['office_name']['font'] }}px;
+     ">
     OFFICE OF CONSULAR AFFAIRS
 </div>
 
-<div style="margin-top:65px;">
-    {{ now()->format('F d, Y H:i') }}<br>
+{{-- --------------------------------------------- --}}
+{{-- DATE --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['date']['y'] }}mm;
+        left: {{ $layout['date']['x'] }}mm;
+        font-size: {{ $layout['date']['font'] }}px;
+     ">
+    {{ now()->format('F d, Y H:i') }}
 </div>
 
-<div style="margin-top:30px;">
+{{-- --------------------------------------------- --}}
+{{-- PAYOR INFO --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['payor_info']['y'] }}mm;
+        left: {{ $layout['payor_info']['x'] }}mm;
+        font-size: {{ $layout['payor_info']['font'] }}px;
+     ">
     Name: {{ $transaction->fullname ?? '-' }}<br>
     OR #: {{ $transaction->or_number }}<br>
     {{ ($transaction->reference ?? '') . ($transaction->remarks ? (' / ' . $transaction->remarks) : '') }}
+
     @if($isRevalidate ?? false)
         <div><strong>(REVALIDATED)</strong></div>
     @endif
 </div>
 
+{{-- ============================================= --}}
+{{-- PARTICULARS LIST (NEW ALIGNMENT SYSTEM) --}}
+{{-- ============================================= --}}
+
 @php
-    $totalLines = 10;
+    $yStart   = $layout['particulars']['y'];
+    $xDesc    = $layout['particulars']['x'];
+    $xAmount  = $layout['particulars']['x_amount'] ?? ($layout['total']['x'] ?? 60);
+    $spacing  = $layout['particulars']['spacing'];
+    $font     = $layout['particulars']['font'];
 
-    // ✅ Compute total per service, with USD converted to PHP using its own exchange_rate
-    $grouped = $transaction->details
-        ->groupBy('service_id')
-        ->map(function($items) {
-            $service = $items->first()->service->name ?? 'Unknown Service';
+    // Compute totals per service (your original logic)
+    $items = [];
+    foreach ($transaction->details->groupBy('service_id') as $serviceId => $group) {
+        $serviceName = $group->first()->service->name ?? "Unknown";
 
-            $totalPhp = $items->sum(function($i) {
-                if ($i->currency === 'USD' && $i->exchange_rate) {
-                    return $i->total * $i->exchange_rate; // convert to PHP
-                }
-                return $i->total;
-            });
-
-            $hasUsd = $items->contains(fn($i) => $i->currency === 'USD');
-
-            return [
-                'service_name' => $service,
-                'has_usd'      => $hasUsd,
-                'usd_details'  => $hasUsd
-                    ? $items->filter(fn($i) => $i->currency === 'USD')
-                        ->map(fn($i) => [
-                            'usd' => $i->total,
-                            'rate' => $i->exchange_rate,
-                            'php' => $i->total * $i->exchange_rate
-                        ])
-                    : collect(),
-                'total_php' => $totalPhp,
-            ];
+        $totalPhp = $group->sum(function($i) {
+            if ($i->currency === 'USD' && $i->exchange_rate) {
+                return $i->total * $i->exchange_rate;
+            }
+            return $i->total;
         });
+
+        $items[] = [
+            'desc' => Str::limit($serviceName, 32),
+            'amt'  => "₱" . number_format($totalPhp, 2),
+        ];
+    }
 @endphp
 
-<table style="margin-top:53px;">
-    <tbody>
-    @foreach($grouped as $g)
-        <tr>
-            <td class="desc">{{ Str::limit($g['service_name'], 32) }}</td>
-            <td class="amount right pad-right-10">
-                ₱{{ number_format($g['total_php'], 2) }}
-            </td>
-        </tr>
+{{-- DESCRIPTIONS --}}
+@foreach ($items as $i => $row)
+    <div class="txt"
+         style="
+            top: {{ $yStart + ($i * $spacing) }}mm;
+            left: {{ $xDesc }}mm;
+            font-size: {{ $font }}px;
+         ">
+        {{ $row['desc'] }}
+    </div>
+@endforeach
 
-        {{-- If there are USD components, show breakdown --}}
-        @if($g['has_usd'])
-            @foreach($g['usd_details'] as $u)
-                <tr>
-                    <td class="desc" style="padding-left: 10px;">
-                        (USD {{ number_format($u['usd'], 2) }} @ ₱{{ number_format($u['rate'], 2) }})
-                    </td>
-                    <td class="amount right pad-right-10">
+{{-- AMOUNTS (Right-aligned using transform: translateX(-100%)) --}}
+@foreach ($items as $i => $row)
+    <div class="txt"
+         style="
+            top: {{ $yStart + ($i * $spacing) }}mm;
+            left: {{ $xAmount }}mm;
+            transform: translateX(-100%);
+            text-align: right;
+            font-size: {{ $font }}px;
+            white-space: nowrap;
+         ">
+        {{ $row['amt'] }}
+    </div>
+@endforeach
 
-                    </td>
-                </tr>
-            @endforeach
-        @endif
 
-        @php $totalLines--; @endphp
-    @endforeach
+{{-- --------------------------------------------- --}}
+{{-- TOTAL --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['total']['y'] }}mm;
+        left: {{ $layout['total']['x'] }}mm;
+        transform: translateX(-100%);
+        text-align: right;
+        font-size: {{ $layout['total']['font'] }}px;
+     ">
+    ₱{{ number_format($transaction->details->sum(fn($i) =>
+        $i->currency === 'USD' && $i->exchange_rate
+            ? $i->total * $i->exchange_rate
+            : $i->total
+    ), 2) }}
+</div>
 
-    {{-- Fill empty rows for alignment --}}
-    @while($totalLines > 0)
-        <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
-        @php $totalLines--; @endphp
-    @endwhile
-    </tbody>
+{{-- --------------------------------------------- --}}
+{{-- AMOUNT IN WORDS --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['amount_words']['y'] }}mm;
+        left: {{ $layout['amount_words']['x'] }}mm;
+        font-size: {{ $layout['amount_words']['font'] }}px;
+     ">
+    {{ App\Helpers\NumberToWords::toWordsPiso($transaction->total_amount_php ?? 0) }}
+</div>
 
-    <tfoot>
-    <tr>
-        <td class="right"></td>
-        <td class="amount pad-right-10">
-            ₱{{ number_format($transaction->details->sum(fn($i) =>
-                $i->currency === 'USD' && $i->exchange_rate
-                    ? $i->total * $i->exchange_rate
-                    : $i->total
-            ), 2) }}
-        </td>
-    </tr>
-    </tfoot>
-</table>
+{{-- --------------------------------------------- --}}
+{{-- CASHIER NAME --}}
+{{-- --------------------------------------------- --}}
+<div class="txt"
+     style="
+        top: {{ $layout['cashier_name']['y'] }}mm;
+        left: {{ $layout['cashier_name']['x'] }}mm;
+        font-size: {{ $layout['cashier_name']['font'] }}px;
+        text-align: center;
+        width: 100%;
+     ">
+    {{ auth()->user()->name }}
+</div>
 
-<table style="margin-top:150px;">
-    <tr>
-        <td width="50%">&nbsp;</td>
-        <td width="50%" style="text-align:center;">{{ auth()->user()->name ?? '' }}</td>
-    </tr>
-</table>
 
 <script>
     window.onload = () => {
@@ -164,5 +193,6 @@
         setTimeout(() => window.close(), 500);
     };
 </script>
+
 </body>
 </html>

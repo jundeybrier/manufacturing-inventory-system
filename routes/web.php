@@ -75,6 +75,11 @@ if (config('app.mode') === 'client') {
         Route::get('/create', Create::class)->name('transactions.create');
     });
 
+    Route::middleware(['auth','site_permission'])->group(function () {
+        Route::get('/settings/receipt-layout', \App\Livewire\ReceiptLayoutPreferences::class)
+            ->name('settings.receipt-layout');
+    });
+
 }
 
 require __DIR__.'/auth.php';
