@@ -1,4 +1,25 @@
 <div>
+    <style>
+        button:disabled,
+        input:disabled,
+        textarea:disabled,
+        select:disabled {
+            opacity: 0.55 !important;
+            cursor: not-allowed !important;
+            background-color: #e5e7eb !important; /* gray-200 */
+            color: #6b7280 !important; /* gray-500 */
+            pointer-events: none !important;
+        }
+
+        /* Dark mode */
+        html.dark button:disabled,
+        html.dark input:disabled,
+        html.dark textarea:disabled,
+        html.dark select:disabled {
+            background-color: #3f3f46 !important; /* zinc-700 */
+            color: #a1a1aa !important; /* zinc-400 */
+        }
+    </style>
 {{--    @if (!$printerPath)--}}
 {{--        <div class="flex items-center bg-yellow-50 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded mb-4 gap-2">--}}
 {{--            <i class="fas fa-exclamation-triangle"></i>--}}
@@ -97,6 +118,7 @@
                     @endphp
                     <div class="flex justify-end mb-3">
                         <button
+                            @disabled($jsonLocked)
                             wire:click="openManageProducts"
                             class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700
                bg-white dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800
@@ -119,39 +141,38 @@
                                         }
                                     }
                                 }
-
-                                $isHidden = in_array($product->id, $hiddenProducts);
                             @endphp
 
-                            <div class="relative group">
+                            <div class="relative group h-full flex">
                                 {{-- Product selection button --}}
                                 <button
+                                    @disabled($jsonLocked)
                                     wire:click="selectProduct({{ $product->id }})"
-                                    class="w-full cursor-pointer text-left border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3
-                   bg-gray-50 dark:bg-zinc-900/60 hover:shadow hover:border-blue-400 dark:hover:border-blue-400
-                   transition-colors focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                                    class="w-full h-full flex flex-col cursor-pointer text-left border border-gray-300 dark:border-gray-700
+                       rounded-xl px-4 py-3 bg-gray-50 dark:bg-zinc-900/60 hover:shadow hover:border-blue-400
+                       dark:hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-400 focus:outline-none"
                                 >
                                     <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
                                         {{ $product->name }}
                                     </div>
 
                                     @if($product->description)
-                                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
                                             {{ $product->description }}
                                         </div>
                                     @endif
 
-                                    <div class="mt-2 flex items-center gap-2">
-                                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
-                                        ₱{{ number_format($total, 2) }}
-                                    </span>
+                                    <div class="mt-auto pt-2 flex items-center gap-2">
+                    <span class="font-bold text-lg text-green-700 dark:text-green-400">
+                        ₱{{ number_format($total, 2) }}
+                    </span>
 
                                         @if($hasVariable)
                                             <span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs border border-orange-400
-                                 text-orange-700 dark:border-orange-500 dark:text-orange-300 bg-orange-50
-                                 dark:bg-orange-900/40 font-semibold">
-                        + variable
-                    </span>
+                              text-orange-700 dark:border-orange-500 dark:text-orange-300 bg-orange-50
+                              dark:bg-orange-900/40 font-semibold">
+                            + variable
+                        </span>
                                         @endif
                                     </div>
 
@@ -175,7 +196,7 @@
                     <div x-data x-init="$nextTick(() => $refs.reference.focus())" class="border border-gray-200 dark:border-zinc-700 shadow rounded-xl p-4 space-y-4 mt-4 bg-white dark:bg-zinc-900/80">
                         <div class="grid grid-cols-1 md:grid-cols-1">
                             <div>
-                                <input autofocus wire:model="reference" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Reference" />
+                                <input @disabled($jsonLocked) autofocus wire:model="reference" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Reference" />
                                 @error('reference')
                                 <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
@@ -183,16 +204,16 @@
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <input wire:model="firstname" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="First Name" />
+                                <input @disabled($jsonLocked) wire:model="firstname" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="First Name" />
                                 @error('firstname')
                                 <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
-                                <input wire:model="middlename" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Middle Name" />
+                                <input @disabled($jsonLocked) wire:model="middlename" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Middle Name" />
                             </div>
                             <div>
-                                <input wire:model="lastname" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Last Name" />
+                                <input @disabled($jsonLocked) wire:model="lastname" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100 p-2 rounded focus:ring-2 focus:ring-blue-400" placeholder="Last Name" />
                                 @error('lastname')
                                 <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
@@ -257,6 +278,7 @@
 
                             <td class="py-2 text-center">
                                 <input type="number" min="1"
+                                       @disabled($jsonLocked)
                                        wire:model.defer="selectedServices.{{ $loop->index }}.quantity"
                                        class="w-12 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
                                        wire:change="recalculateTotal" />
@@ -267,7 +289,7 @@
                             </td>
 
                             <td class="py-2 text-right">
-                                <button wire:click="removeSelectedService({{ $s['service_id'] }})"
+                                <button @disabled($jsonLocked) wire:click="removeSelectedService({{ $s['service_id'] }})"
                                         class="text-red-600 hover:underline">
                                     Remove
                                 </button>
@@ -570,9 +592,46 @@
             </div>
         @endif
 
+        @if($showJsonModal)
+            <div
+                x-data
+                x-init="$nextTick(() => $refs.jsonField.focus())"
+                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+                style="backdrop-filter: blur(2px)"
+            >
+                <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-6 w-full max-w-xl border">
+
+                    <h2 class="text-lg font-bold mb-3 text-blue-700 dark:text-blue-300 flex items-center">
+                        <i class="fas fa-code mr-2"></i> JSON Input
+                    </h2>
+
+                    <textarea
+                        x-ref="jsonField"
+                        wire:model.defer="jsonInput"
+                        placeholder='{"id":"AUTH-189154",...}'
+                        class="w-full h-52 p-3 border border-gray-300 dark:border-gray-600
+                       bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-200 rounded-lg
+                       focus:ring-2 focus:ring-blue-400"
+                        @keydown.enter.prevent="$wire.processJson()"
+                    ></textarea>
+
+                    @error('jsonInput')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+
+                    <div class="flex justify-end gap-2 mt-4">
+                        <flux:button variant="ghost" wire:click="$set('showJsonModal', false)">Cancel</flux:button>
+                        <flux:button wire:click="processJson">
+                            <i class="fas fa-check mr-1"></i> Process
+                        </flux:button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
     </div>
         <script>
-            document.addEventListener('livewire:init', () => {
+            document.addEventListener('livewire:initialized', () => {
                 Livewire.on('print-receipt', (data) => {
                     const id = data.transactionId;
                     const isRevalidate = data.revalidate ?? false;
@@ -580,6 +639,14 @@
                     const w = window.open(url, '_blank', 'width=400,height=600');
                     if (!w) alert('Please allow popups to print receipts.');
                 });
+            });
+
+                document.addEventListener('keydown', function (e) {
+                // CTRL + SHIFT + J
+                if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                Livewire.dispatch('open-json-modal');
+            }
             });
         </script>
 </div>

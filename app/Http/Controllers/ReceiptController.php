@@ -13,7 +13,7 @@ class ReceiptController extends Controller
         $transaction->load('details');
 
         $layout = auth()->user()->receiptLayout
-            ?? new ReceiptLayout(config('receipt_default'));
+            ?? new ReceiptLayout(config('defaults'));
 
         return view('receipts.print', [
             'transaction' => $transaction,

@@ -141,6 +141,13 @@
     </div>
 @endforeach
 
+@php
+    $totalPhp = $transaction->details->sum(function ($i) {
+        return ($i->currency === 'USD' && $i->exchange_rate)
+            ? $i->total * $i->exchange_rate
+            : $i->total;
+    });
+@endphp
 
 {{-- --------------------------------------------- --}}
 {{-- TOTAL --}}
@@ -153,11 +160,7 @@
         text-align: right;
         font-size: {{ $layout['total']['font'] }}px;
      ">
-    ₱{{ number_format($transaction->details->sum(fn($i) =>
-        $i->currency === 'USD' && $i->exchange_rate
-            ? $i->total * $i->exchange_rate
-            : $i->total
-    ), 2) }}
+    ₱{{ number_format($totalPhp, 2) }}
 </div>
 
 {{-- --------------------------------------------- --}}
@@ -169,7 +172,7 @@
         left: {{ $layout['amount_words']['x'] }}mm;
         font-size: {{ $layout['amount_words']['font'] }}px;
      ">
-    {{ App\Helpers\NumberToWords::toWordsPiso($transaction->total_amount_php ?? 0) }}
+    {{ App\Helpers\NumberToWords::convert($totalPhp ?? 0) }} pesos only.
 </div>
 
 {{-- --------------------------------------------- --}}

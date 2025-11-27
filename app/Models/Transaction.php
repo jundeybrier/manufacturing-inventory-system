@@ -12,7 +12,7 @@ class Transaction extends Model
     protected $fillable = [
         'uuid',
         'date',
-        'reference_number',
+        'reference',
         'or_number',
         'firstname',
         'lastname',

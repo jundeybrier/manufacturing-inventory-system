@@ -20,12 +20,13 @@ services:
         container_name: cashiering-php
         depends_on: [mysql]
         environment:
+            APP_NAME: ${APP_NAME}
             APP_ENV: ${APP_ENV}
             APP_DEBUG: ${APP_DEBUG}
             APP_KEY: ${APP_KEY}
             APP_MODE: ${APP_MODE}
             SERVER_API_URL: ${SERVER_API_URL}
-
+            APP_SITE_CODE: ${APP_SITE_CODE}
             DB_CONNECTION: ${DB_CONNECTION}
             DB_HOST: ${DB_HOST}
             DB_PORT: ${DB_PORT}

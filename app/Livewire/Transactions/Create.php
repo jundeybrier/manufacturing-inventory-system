@@ -63,6 +63,107 @@ class Create extends BaseComponent
     public $showManageProducts = false;
     public $hiddenProductsList = [];
 
+    public $showJsonModal = false;
+    public bool $jsonLocked = false;
+    public $jsonInput = '';
+
+    protected $listeners = ['open-json-modal' => 'openJsonModal'];
+    public array $regular = [5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,32,33,34,35,36,37,38,39,40,41,78];
+    public array $expedite = [6,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,77];
+
+    public function openJsonModal()
+    {
+        $this->jsonInput = '';
+        $this->showJsonModal = true;
+    }
+
+    public function processJson()
+    {
+        try {
+            $data = json_decode($this->jsonInput, true);
+
+            if (!$data) {
+                throw new \Exception("Invalid JSON format.");
+            }
+
+            $ref = $data['id'] ?? null;
+
+            // 🔍 Check if reference already exists in DB
+            if ($ref) {
+                $exists = \App\Models\Transaction::where('reference', $ref)->exists();
+
+                if ($exists) {
+                    throw new \Exception("Reference '{$ref}' already exists in previous transactions.");
+                }
+
+                $this->reference = $ref;
+
+                // -----------------------------------------
+                // 1. Assign Name Fields
+                // -----------------------------------------
+                $this->firstname  = $data['first_name']  ?? '';
+                $this->middlename = $data['middle_name'] ?? '';
+                $this->lastname   = $data['last_name']   ?? '';
+
+                if (!empty($data['rep_name'])) {
+                    $this->remarks = 'REP: ' . $data['rep_name'];
+                }
+            }
+
+            // -----------------------------------------
+            // 2. Parse docs and combine quantities
+            // -----------------------------------------
+            $docTotals = [];
+
+            if (!empty($data['docs']) && is_array($data['docs'])) {
+                foreach ($data['docs'] as $doc) {
+                    $id  = $doc['id'] ?? null;
+                    $qty = intval($doc['quantity'] ?? 1);
+
+                    if (!$id) continue;
+
+                    if (!isset($docTotals[$id])) {
+                        $docTotals[$id] = $qty;
+                    } else {
+                        $docTotals[$id] += $qty;
+                    }
+                }
+            }
+
+            // -----------------------------------------
+            // 3. Map to products:
+            //    REGULAR → Product 3
+            //    EXPEDITE → Product 4
+            // -----------------------------------------
+            foreach ($docTotals as $docId => $qty) {
+
+                if (in_array($docId, $this->regular)) {
+                    for ($i = 0; $i < $qty; $i++) {
+                        $this->selectProduct(3); // Regular
+                    }
+                }
+
+                if (in_array($docId, $this->expedite)) {
+                    for ($i = 0; $i < $qty; $i++) {
+                        $this->selectProduct(4); // Expedite
+                    }
+                }
+            }
+
+            // -----------------------------------------
+            // 4. Recalculate totals
+            // -----------------------------------------
+            $this->recalculateTotal();
+
+            $this->showJsonModal = false;
+            $this->jsonLocked = true;
+            $this->toast('success', 'JSON processed successfully.');
+
+        } catch (\Exception $e) {
+            $this->addError('jsonInput', 'Invalid JSON: ' . $e->getMessage());
+        }
+    }
+
 // This method is triggered by the button
     public function confirmSubmit()
     {
@@ -357,6 +458,7 @@ class Create extends BaseComponent
         // 🧾 Create parent transaction
         $transaction = Transaction::create([
             'or_number'     => $this->or_number,
+            'reference'     => $this->reference,
             'user_id'       => Auth::id(),
             'office_id'     => Auth::user()->office_id ?? null,
             'session_id'    => $this->activeSession->id ?? null,
@@ -419,8 +521,8 @@ class Create extends BaseComponent
         // 🔁 Reset
         $this->reset([
             'firstname', 'middlename', 'lastname', 'rep_name',
-            'reference_number', 'amount_paid', 'remarks',
-            'selectedServices', 'totalAmount', 'usdConversionRate',
+            'amount_paid', 'remarks',
+            'selectedServices', 'totalAmount', 'usdConversionRate','reference'
         ]);
 
         $this->recalculateTotal();
@@ -428,6 +530,7 @@ class Create extends BaseComponent
 
         // ✅ Success
         if ($transaction->id) {
+            $this->jsonLocked = false;
             $this->toast('success', 'Transaction successfully saved!');
         }
     }
