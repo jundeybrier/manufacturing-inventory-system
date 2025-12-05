@@ -19,6 +19,7 @@ class SyncClosedSessionsJob implements ShouldQueue
 
     public function handle(): void
     {
+        app(\App\Services\Sync\TransactionSyncService::class)->sync($this->isManual);
         Log::info('🔄 SyncClosedSessionsJob started');
 
         $sessions = CashierSession::whereNotNull('closed_at')

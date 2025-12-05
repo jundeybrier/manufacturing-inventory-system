@@ -329,26 +329,29 @@
                 <div>
                     @if($modalProduct && $modalProduct->services)
                         @foreach ($modalProduct->services as $service)
-                            <div class="mb-4 border-b border-gray-300 dark:border-gray-700 pb-2">
-                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                            <div class="mb-6 pb-4 border-b border-gray-300 dark:border-gray-700">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-200 mb-4">
                                     {{ $service->name }}
                                 </h4>
 
                                 @foreach ($service->feeComponents->where('is_variable', true) as $fee)
-                                    <div class="mb-2">
-                                        <label class="block text-xs font-medium mb-1">
+                                    <div class="mb-4">
+                                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                                             {{ $fee->name }}
                                             @if($fee->currency === 'USD')
-                                                <span class="ml-1 text-blue-500">(USD)</span>
+                                                <span class="ml-1 text-blue-600 dark:text-blue-400">(USD Amount)</span>
                                             @endif
                                         </label>
+
                                         <input
                                             type="number"
                                             min="0"
                                             step="0.01"
                                             wire:model.defer="variableAmounts.{{ $fee->id }}"
                                             placeholder="Enter amount"
-                                            class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-gray-100"
+                                            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2
+                                   bg-white dark:bg-zinc-800/70 text-gray-900 dark:text-gray-100
+                                   focus:outline-none focus:ring-2 focus:ring-blue-400/70"
                                         />
                                     </div>
                                 @endforeach
@@ -357,31 +360,52 @@
 
                         {{-- USD Exchange Rate --}}
                         @if(collect($modalProduct->services)->flatMap->feeComponents->where('currency', 'USD')->count())
-                            <div class="mb-3">
-                                <label class="block text-sm font-medium">USD Exchange Rate</label>
+                            <div class="mb-5">
+                                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                    USD Conversion Rate
+                                </label>
 
                                 @if($isExchangeRateLocked)
                                     <input type="text"
-                                           class="input input-bordered w-full bg-gray-100 dark:bg-gray-700"
+                                           class="w-full border border-gray-300 dark:border-gray-600
+                                  rounded-md px-3 py-2 bg-gray-100 dark:bg-gray-700
+                                  text-gray-700 dark:text-gray-200"
                                            value="{{ $usdConversionRate }}"
                                            readonly />
-                                    <p class="text-xs text-gray-500 mt-1">Locked for today ({{ now()->format('M d, Y') }})</p>
+
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        This conversion rate is locked for today ({{ now()->format('M d, Y') }}).
+                                    </p>
                                 @else
                                     <input type="number"
                                            wire:model.defer="usdConversionRate"
-                                           step="0.0001"
-                                           class="input input-bordered w-full"
-                                           placeholder="Enter today's rate" />
+                                           step="0.01"
+                                           placeholder="Enter today's rate"
+                                           class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2
+                                  bg-white dark:bg-zinc-800/70 text-gray-900 dark:text-gray-100
+                                  focus:outline-none focus:ring-2 focus:ring-blue-400/70"
+                                    />
+
+                                    @error('usdConversionRate')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 @endif
                             </div>
                         @endif
                     @endif
 
-                    <div class="flex justify-end mt-4 space-x-2">
-                        <flux:button wire:click="applyVariableFees"><i class="fas fa-save mr-1"></i> OK</flux:button>
-                        <flux:button variant="ghost" wire:click="$set('showVariableModal', false)">Cancel</flux:button>
+                    {{-- Action Buttons --}}
+                    <div class="flex justify-end mt-6 space-x-2">
+                        <flux:button wire:click="applyVariableFees">
+                            <i class="fas fa-save mr-1"></i> Confirm
+                        </flux:button>
+
+                        <flux:button variant="ghost" wire:click="$set('showVariableModal', false)">
+                            Cancel
+                        </flux:button>
                     </div>
                 </div>
+
             </x-modal-slide-over>
 
 

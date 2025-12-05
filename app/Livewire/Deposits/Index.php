@@ -22,13 +22,16 @@ class Index extends Component
     public $fund_source_id;
     public $amount;
     public $reference_number;
+    public $isBeginningBalance = false;
 
     protected function rules()
     {
         return [
             'date' => ['required', 'date'],
             'fund_source_id' => ['required', Rule::exists('accounts', 'id')],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => $this->isBeginningBalance
+                ? ['required', 'numeric'] // allow negative
+                : ['required', 'numeric', 'min:0.01'], // normal deposits only positive
             'reference_number' => ['required', 'string', 'max:255'],
         ];
     }

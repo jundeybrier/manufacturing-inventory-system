@@ -96,6 +96,11 @@
                 @endforeach
             </flux:select>
 
+            <flux:checkbox
+                wire:model="isBeginningBalance"
+                label="Beginning Balance Adjustment"
+            />
+
             <flux:input type="number" step="0.01" min="1"
                         label="Amount"
                         wire:model.defer="amount" required />

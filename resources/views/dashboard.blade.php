@@ -19,6 +19,9 @@
                         Exclusively made for the Department of Foreign Affairs only
                     </p>
                 </div>
+                <div class="p-4 bg-white dark:bg-zinc-800 rounded shadow">
+                    <livewire:manual-sync-trigger />
+                </div>
                 @if (config('app.stress_relief_enabled'))
                     @livewire('stress-button')
                 @endif

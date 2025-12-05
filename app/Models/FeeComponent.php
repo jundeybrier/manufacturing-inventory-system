@@ -31,4 +31,10 @@ class FeeComponent extends Model
     public function account() {
         return $this->belongsTo(Account::class);
     }
+
+    public function transactionDetails()
+    {
+        return $this->hasMany(\App\Models\TransactionDetail::class, 'fee_component_id');
+    }
+
 }

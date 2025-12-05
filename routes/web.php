@@ -37,6 +37,9 @@ Route::middleware(['auth', 'site_permission'])->prefix('reports')->group(functio
 
     Route::get('/daily', [\App\Http\Controllers\TransactionReportController::class, 'daily'])
         ->name('reports.daily');
+
+    Route::get('/crr', [\App\Http\Controllers\Reports\CrrReportController::class, 'index'])
+        ->name('reports.crr');
 });
 
 Route::get('/print/receipt/{transaction}', [\App\Http\Controllers\ReceiptController::class, 'show'])

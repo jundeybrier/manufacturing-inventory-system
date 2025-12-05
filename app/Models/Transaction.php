@@ -96,5 +96,10 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'voided_by');
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
 
 }

@@ -4,13 +4,21 @@ namespace App\Livewire\Reports;
 
 use Carbon\Carbon;
 use Livewire\Component;
+use App\Livewire\BaseComponent;
 
-class Index extends Component
+class Index extends BaseComponent
 {
     public $date;
     public $userId;
     public $officeUsers = [];
     public $canSelectUser = false;
+
+    public $crrStartDate;
+    public $crrEndDate;
+    public $crrUserId;
+    public $crrAccountId = 1;
+    public $accounts;
+    public $format = 'pdf';
 
     public function mount()
     {
@@ -39,6 +47,8 @@ class Index extends Component
         $this->canSelectUser = false;
         $this->officeUsers = [$authUser];
         $this->userId = $authUser->id;
+
+        $this->accounts = \App\Models\Account::orderBy('name')->get();
     }
 
     public function render()
@@ -54,4 +64,23 @@ class Index extends Component
             'user' => $this->userId
         ]);
     }
+
+    public function generateCrr()
+    {
+        if (!$this->crrStartDate || !$this->crrEndDate || !$this->crrAccountId) {
+            $this->toast('warning', 'Please select a complete date range.');
+            return;
+        }
+
+        $userId = $this->crrUserId ?: auth()->id();
+
+        return redirect()->route('reports.crr', [
+            'start'   => $this->crrStartDate,
+            'end'     => $this->crrEndDate,
+            'user'    => $userId,
+            'account' => $this->crrAccountId,
+            'format' => $this->format,
+        ]);
+    }
+
 }

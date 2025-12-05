@@ -259,6 +259,7 @@ class Create extends BaseComponent
 
             // ✅ If this service has variable components, trigger modal
             if ($serviceHasVariable) {
+
                 $hasVariable = true;
                 $this->modalProduct = $product;
 
@@ -301,6 +302,7 @@ class Create extends BaseComponent
 
         // ✅ If any variable fee exists, prepare USD rate logic
         if ($hasVariable && $this->modalProduct) {
+
             // 🔒 Check if user already has a locked USD conversion rate today
             $lockedRate = \App\Models\TransactionDetail::whereHas('transaction', function ($q) {
                 $q->where('user_id', auth()->id())
@@ -347,6 +349,10 @@ class Create extends BaseComponent
     public function applyVariableFees()
     {
         if (!$this->modalProduct) return;
+
+        $this->validate([
+            'usdConversionRate' => ['required', 'numeric', 'regex:/^\d+(\.\d{0,2})?$/']
+        ]);
 
         $product = $this->modalProduct;
 
