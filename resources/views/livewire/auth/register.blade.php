@@ -86,7 +86,6 @@ new #[Layout('components.layouts.auth')] class extends Component {
         <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-300/50
                 bg-zinc-100/60 dark:bg-zinc-800/60 dark:border-zinc-700/50
                 text-xs text-zinc-600 dark:text-zinc-400 shadow-sm">
-            <x-lucide-cpu class="w-3.5 h-3.5 text-emerald-500" />
             <span class="uppercase tracking-wide font-medium">
             Running in
             <span class="text-emerald-600 dark:text-emerald-400">
