@@ -46,6 +46,15 @@ class AdminSeeder extends Seeder
                 'office_id' => $officeId,
             ]
         );
+
+        $superAdmin = User::updateOrCreate(
+            ['email' => 'parrillaanalie08@gmail.com'],
+            [
+                'name'      => 'Administrator',
+                'password'  => Hash::make('12345678'), // Update manually later
+                'office_id' => $officeId,
+            ]
+        );
         $superAdmin->assignRole('admin');
 
     }
