@@ -24,6 +24,12 @@
     <i class="fas fa-right-left"></i> {{ __('Stage Movement') }}
 </flux:navlist.item>
 <flux:navlist.item
+    :href="route('stages.index')"
+    :current="request()->routeIs('stages.index')"
+    wire:navigate>
+    <i class="fas fa-right-left"></i> {{ __('Stages') }}
+</flux:navlist.item>
+<flux:navlist.item
     :href="route('users.index')"
     :current="request()->routeIs('users.index')"
     wire:navigate>
