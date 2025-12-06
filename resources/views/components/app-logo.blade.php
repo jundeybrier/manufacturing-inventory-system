@@ -3,7 +3,7 @@
 </div>
 
 <div class="ms-1 grid flex-1 text-start text-sm leading-tight">
-    <span class="truncate font-semibold text-black dark:text-zinc-100">Cashiering System v2</span>
+    <span class="truncate font-semibold text-black dark:text-zinc-100">Inventory System v1</span>
     <span class="text-[11px] text-zinc-400 dark:text-zinc-500">
         {{ current_office_name() }}
     </span>

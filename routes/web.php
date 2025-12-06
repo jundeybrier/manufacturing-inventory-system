@@ -1,11 +1,9 @@
 <?php
 
-use App\Http\Controllers\Auth\RegisterUserController;
-use App\Livewire\Transactions\All;
-use App\Livewire\Transactions\Create;
 use Illuminate\Support\Facades\Route;
-use App\Livewire\Deposits\Index;
 use Livewire\Volt\Volt;
+use App\Http\Controllers\StageMovementController;
+use App\Livewire\Inventory\ManageInventoryItems;
 
 Route::redirect('/register', '/registration');
 Route::get('/', function () {
@@ -13,11 +11,11 @@ Route::get('/', function () {
 })->name('home');
 
 Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified','site_permission'])
+    ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
 
-Route::middleware(['auth','site_permission'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
@@ -26,63 +24,44 @@ Route::middleware(['auth','site_permission'])->group(function () {
 
 });
 
-Route::middleware(['auth','site_permission'])->prefix('transactions')->group(function () {
-    Route::get('/', All::class)->name('transactions.index');
-    Route::get('/create', Create::class)->name('transactions.create');
+Route::prefix('stage-movements')->group(function () {
+    Route::get('/', [StageMovementController::class, 'index'])->name('stage-movements.index');
+    Route::get('/create', [StageMovementController::class, 'create'])->name('stage-movements.create');
+    Route::post('/', [StageMovementController::class, 'store'])->name('stage-movements.store');
 });
 
-Route::middleware(['auth', 'site_permission'])->prefix('reports')->group(function () {
-    Route::get('/', \App\Livewire\Reports\Index::class)
-        ->name('reports.index');
+Route::get('/inventory-items', ManageInventoryItems::class)
+    ->name('inventory-items.index');
 
-    Route::get('/daily', [\App\Http\Controllers\TransactionReportController::class, 'daily'])
-        ->name('reports.daily');
+Route::middleware(['auth'])->group(function () {
 
-    Route::get('/crr', [\App\Http\Controllers\Reports\CrrReportController::class, 'index'])
-        ->name('reports.crr');
+    // Production Wizard
+    Route::get('/production/create', \App\Livewire\Production\ProductionWizard::class)
+        ->name('production.create');
+
+    // Production Batch Index
+    Route::get('/production', [\App\Http\Controllers\Production\ProductionBatchController::class, 'index'])
+        ->name('production.index');
+
+//    // Production Batch Details
+//    Route::get('/production/{batch}', [\App\Http\Controllers\Production\ProductionBatchController::class, 'show'])
+//        ->name('production.show');
+
+    Route::get('/production/{batchId}', \App\Livewire\Production\ProductionShow::class)
+        ->name('production.show');
+
+    Route::get('/bom', \App\Livewire\Bom\BomIndex::class)->name('bom.index');
+
+    Route::get('/bom/{product}', \App\Livewire\Bom\BomEditor::class)
+        ->name('bom.edit');
+
+    Route::get('/stages', \App\Livewire\Stages\StageManager::class)->name('stages.index');
+
 });
 
-Route::get('/print/receipt/{transaction}', [\App\Http\Controllers\ReceiptController::class, 'show'])
-    ->name('print.receipt');
-
-Route::middleware(['auth', 'role:admin','site_permission'])->group(function () {
-    Route::get('/products', \App\Livewire\Products\Index::class)->name('products.index');
-    Route::get('/services', \App\Livewire\Services\Index::class)->name('services.index');
-    Route::get('/accounts', \App\Livewire\Accounts\Index::class)->name('accounts.index');
-    Route::get('/fee-components', \App\Livewire\FeeComponents\Index::class)->name('fee-components.index');
-    Route::get('/offices', \App\Livewire\Offices\Index::class)->name('offices.index');
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/users', \App\Livewire\Users\Index::class)->name('users.index');
 });
 
-Route::middleware(['site_permission'])->group(function () {
-//    Route::get('/registration', [RegisterUserController::class, 'show'])->name('registration');
-//    Route::post('/registration', [RegisterUserController::class, 'store'])->name('registration.store');
-//    Route::get('/client-register', [RegisterUserController::class, 'show'])->name('client.register');
-//    Route::post('/client-register', [RegisterUserController::class, 'store'])->name('client.register.store');
-});
-
-Route::middleware('auth')->group(function () {
-    Route::get('/preferences', App\Livewire\UserPreferences::class)
-        ->name('user.preferences');
-});
-
-if (config('app.mode') === 'client') {
-    Route::get('/sync-status', \App\Livewire\SyncStatus::class)->name('sync.status');
-
-    Route::middleware(['site_permission'])->group(function () {
-        Route::get('/deposits', Index::class)->name('deposits.index');
-    });
-
-    Route::middleware(['auth','site_permission'])->prefix('transactions')->group(function () {
-        Route::get('/', All::class)->name('transactions.index');
-        Route::get('/create', Create::class)->name('transactions.create');
-    });
-
-    Route::middleware(['auth','site_permission'])->group(function () {
-        Route::get('/settings/receipt-layout', \App\Livewire\ReceiptLayoutPreferences::class)
-            ->name('settings.receipt-layout');
-    });
-
-}
 
 require __DIR__.'/auth.php';
